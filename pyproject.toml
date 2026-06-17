@@ -2,6 +2,9 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv.extra-build-dependencies]
+pyarrow = ["setuptools", "wheel"]
+
 [project]
 name = "dreamdata"
 version = "0.2.0"
