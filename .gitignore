@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Sphinx
+docs/build/
+
+# uv / venv
+.venv/
+venv/
+.env
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Workspace (created at runtime)
+/workspace/
+/dreamdata_workspace/
+
+# Benchmarks history (per-run)
+benchmarks/history.jsonl
+
+# Local databases
+*.sqlite
+*.sqlite-journal

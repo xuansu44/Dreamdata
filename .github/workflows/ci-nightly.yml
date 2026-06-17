@@ -1,0 +1,62 @@
+name: ci-nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"  # 2 AM UTC daily
+  workflow_dispatch:  # allow manual trigger
+
+jobs:
+  scale-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres-15:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: dreamdata_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test -d dreamdata_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/dreamdata_test
+      WORKSPACE_PATH: /tmp/dreamdata_ws
+      USER_ID: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - run: uv run alembic upgrade head
+      - run: mkdir -p "$WORKSPACE_PATH"
+      - run: uv run pytest tests/scale/ -v
+
+  mutation-testing:
+    runs-on: ubuntu-latest
+    services:
+      postgres-15:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: dreamdata_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test -d dreamdata_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/dreamdata_test
+      WORKSPACE_PATH: /tmp/dreamdata_ws
+      USER_ID: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - run: uv run alembic upgrade head
+      - run: mkdir -p "$WORKSPACE_PATH"
+      - name: Run mutmut (placeholder)
+        run: echo "mutation testing placeholder - score target >= 85%"

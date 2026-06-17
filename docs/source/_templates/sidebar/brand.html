@@ -1,0 +1,15 @@
+{% extends "furo/sidebar/brand.html" %}
+
+{% block brand_content %}
+  {{ super() }}
+  {% if languages %}
+  <div class="language-switcher">
+    <span class="language-label">🌐</span>
+    {% for lang_code, lang_name, lang_url in languages %}
+      {% if lang_code != current_language %}
+      <a href="{{ pathto(lang_url + 'index.html', 1) }}" class="language-link">{{ lang_name }}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endblock brand_content %}

@@ -1,0 +1,62 @@
+name: ci-pr
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy --strict src/dreamdata/sdk.py
+      - run: uv run mypy --check-untyped-defs --disallow-untyped-defs src/dreamdata
+
+  unit-component-sdk-fuzz:
+    runs-on: ubuntu-latest
+    services:
+      postgres-15:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: dreamdata_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test -d dreamdata_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/dreamdata_test
+      WORKSPACE_PATH: /tmp/dreamdata_ws
+      USER_ID: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - run: uv run alembic upgrade head
+      - run: mkdir -p "$WORKSPACE_PATH"
+      - run: uv run pytest tests/unit/ tests/component/ tests/sdk/ tests/fuzz/ -q
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - run: uv run pip audit
+      - run: uv run ruff check --select S .
+
+  docs-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - run: uv run sphinx-build -W docs/source docs/build

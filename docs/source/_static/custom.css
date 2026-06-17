@@ -1,0 +1,160 @@
+/* Custom styles for dreamdata documentation */
+
+/* Increase line height for better readability */
+body {
+    line-height: 1.8;
+}
+
+/* Paragraph spacing */
+p {
+    margin-bottom: 1.2em;
+    line-height: 1.8;
+}
+
+/* List spacing */
+ul, ol {
+    line-height: 1.8;
+    margin-bottom: 1.2em;
+}
+
+li {
+    margin-bottom: 0.5em;
+}
+
+li > p {
+    margin-bottom: 0.5em;
+}
+
+/* Heading spacing */
+h1, h2, h3, h4, h5, h6 {
+    line-height: 1.4;
+    margin-top: 1.5em;
+    margin-bottom: 0.6em;
+}
+
+h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--color-sidebar-background-border);
+}
+
+h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+/* Code block spacing */
+pre {
+    line-height: 1.6;
+    margin: 1.2em 0;
+    padding: 1em;
+}
+
+code {
+    line-height: 1.6;
+}
+
+/* Table spacing */
+table {
+    line-height: 1.6;
+    margin: 1.2em 0;
+}
+
+th, td {
+    padding: 0.6em 1em;
+}
+
+/* Blockquote */
+blockquote {
+    line-height: 1.8;
+    margin: 1.2em 0;
+    padding: 0.8em 1.2em;
+}
+
+/* Definition lists */
+dl {
+    line-height: 1.8;
+    margin-bottom: 1.2em;
+}
+
+dt {
+    margin-top: 1em;
+    font-weight: 600;
+}
+
+dd {
+    margin-left: 1.5em;
+}
+
+/* Sidebar TOC spacing */
+.sidebar-tree li {
+    margin-bottom: 0.2em;
+}
+
+.sidebar-tree a {
+    line-height: 1.6;
+}
+
+/* Content area padding */
+article[role="main"] {
+    padding-top: 1rem;
+}
+
+/* Better spacing for admonitions */
+.admonition {
+    margin: 1.5em 0;
+    line-height: 1.8;
+}
+
+.admonition p {
+    margin-bottom: 0.8em;
+}
+
+.admonition p:last-child {
+    margin-bottom: 0;
+}
+
+/* Autodoc styling */
+.py.class, .py.function, .py.method {
+    margin: 1.5em 0;
+}
+
+.py sig {
+    line-height: 1.6;
+}
+
+/* Field list spacing (for docstring parameters) */
+dl.field-list {
+    margin-bottom: 1em;
+}
+
+dl.field-list > dt {
+    margin-top: 0.5em;
+    padding-top: 0.5em;
+}
+
+/* Better spacing for MyST definition lists */
+dl.def-list dt {
+    margin-top: 0.8em;
+}
+
+/* Horizontal rule */
+hr {
+    margin: 2em 0;
+}
+
+/* Math display */
+.math.display {
+    margin: 1.5em 0;
+}
