@@ -96,7 +96,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
       - run: uv sync --extra dev
       - run: uv run sphinx-build -W docs/source docs/build
-      - run: uv run sphinx-build docs/source/zh_CN docs/build/html/zh_CN
+      - run: uv run sphinx-build docs/source/zh_CN docs/build/zh_CN
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/build
