@@ -24,7 +24,7 @@ edges:
     condition: when writing tests, designing coverage, or questioning whether something can be tested
   - target: patterns/INDEX.md
     condition: when starting a task — check the pattern index for a matching pattern file
-last_updated: 2026-06-17 (git-ci-agent Monitor approach updated)
+last_updated: 2026-06-17 (Phase 3/4 coverage gap documented)
 ---
 
 # Session Bootstrap
@@ -138,7 +138,12 @@ Then read this file fully before doing anything else in this session.
 **Known issues:**
 - L7 mutation testing (mutmut) not yet wired — nightly job stub only.
 - L6 scale takes ~3 min on dev hardware; CI nightly should pre-cache the 1M-row fixture.
-- Per-module coverage below the 95% target on `sdk.py` (90%), `meta/repository.py` (92%), `engine/duckdb_engine.py` (84%); overall 92% meets the ≥80% gate. Tightening per-module coverage is a Phase-2 follow-up.
+- **Phase 3/4 coverage gap** (current 64% < 75% threshold) — needs test suite expansion:
+  - `src/dreamdata/versioning/core.py`: 34% → needs L1-L3 tests for version chain, COW, append/map/filter_map
+  - `src/dreamdata/parquet_cache.py`: 26% → needs L1-L3 tests for cache generation, listing, and invalidation
+  - `src/dreamdata/engine/duckdb_engine.py`: 47% → needs more tests for Parquet path and versioned scans
+  - `src/dreamdata/sdk.py`: 70% → needs tests for new versioning and cache SDK methods
+  - Tracking issue: add L3 integration tests for `list_versions()`, `get_version()`, `append()`, `map()`, `filter_map()`, `refresh_parquet_cache()`, `list_parquet_caches()`
 
 ## Routing Table
 
