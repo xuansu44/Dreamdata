@@ -95,13 +95,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - run: uv sync --extra dev
-      # 构建英文版
       - run: uv run sphinx-build -W docs/source docs/build
-      # 构建中文版
-      - run: uv run sphinx-build -W docs/source/zh_CN docs/build/html/zh_CN
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/build/html
+          path: docs/build
 
   coverage:
     runs-on: ubuntu-latest
