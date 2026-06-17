@@ -13,7 +13,6 @@
 installation
 quickstart
 phases/phase-1
-phases/phase-2
 api/engine
 api/dataset
 api/errors
