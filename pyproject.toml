@@ -72,6 +72,7 @@ ignore = [
 "docs/source/conf.py" = ["S", "ARG"]
 "src/dreamdata/engine/**/*.py" = ["S608"]  # SQL is built from sanitized literals, not user input
 "src/dreamdata/meta/**/*.py" = ["SIM117"]  # nested with is clearer than combined for transaction+cursor
+"scripts/run_local_tests.py" = ["S", "PLR", "ARG", "PTH", "B017", "B904", "F841", "E702", "B905", "RUF059", "PLC0415", "SIM105", "S110", "UP006", "UP035", "PLW1510", "PLW2901", "RUF059", "PTH123"]
 
 [tool.ruff.format]
 quote-style = "double"

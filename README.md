@@ -4,9 +4,10 @@ A versioned management engine for LLM training data — JSONL-native storage wit
 multi-user tag isolation, flexible retrieval, functional transforms, and dataset
 versioning, scaling to TBs.
 
-**Status:** v0.1.0 stable release. Phase 1 and Phase 2 are complete: core
+**Status:** v0.2.0 stable release. Phases 1-4 are complete: core
 registration + tagging + search + multi-user isolation + advanced filters +
-field indexing. See `.mex/ROUTER.md` for the full project state.
+field indexing + versioning (COW, append, map/filter_map) + Parquet caching.
+See `.mex/ROUTER.md` for the full project state.
 
 ## Install
 
@@ -23,7 +24,7 @@ uv sync --extra dev
 
 See `docs/source/quickstart.md` or the online documentation.
 
-## Features (v0.1.0)
+## Features (v0.2.0)
 
 - Register datasets from JSONL files (originals untouched)
 - Tag and annotate rows (private per-user by default)
@@ -31,3 +32,5 @@ See `docs/source/quickstart.md` or the online documentation.
 - Advanced filters (regex, range, IN, boolean combinations)
 - Field indexes for fast lookups
 - Automatic pruning via file_stats + field_index
+- **Versioning (Phase 3):** append-only COW versions, map/filter_map transforms
+- **Parquet caching (Phase 4):** optional pyarrow-based cache for faster scans
