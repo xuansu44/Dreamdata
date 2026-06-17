@@ -277,6 +277,24 @@ class VersionManager:
             total_rows = len(all_row_sources)
             self._repo.set_row_count(version_id=new_v.id, row_count=total_rows)
 
+            # Re-fetch the version with updated row_count
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, dataset_id, version_number, parent_version_id, row_count, created_at "
+                    "FROM dataset_versions WHERE id = %s",
+                    (new_v.id,),
+                )
+                r = cur.fetchone()
+            assert r is not None
+            new_v = DatasetVersionMeta(
+                id=r["id"],
+                dataset_id=r["dataset_id"],
+                version_number=r["version_number"],
+                parent_version_id=r["parent_version_id"],
+                row_count=r["row_count"],
+                created_at=r["created_at"],
+            )
+
             # Update dataset's current_version_id to new version
             with conn.cursor() as cur:
                 cur.execute(
@@ -453,14 +471,15 @@ class VersionManager:
 
             # For now, let's use a simpler approach: write all rows if any changed
             # (this is a placeholder; real COW is more complex)
+            final_file_rel = delta_file_rel
             if not row_sources or len(row_sources) != len(new_rows):
                 # Fallback: write all transformed rows
                 full_rows = [(idx, content) for idx, content, _ in new_rows]
                 full_file_abs = data_dir / "data_0001.jsonl"
-                full_file_rel = self._workspace.to_rel(full_file_abs)
+                final_file_rel = self._workspace.to_rel(full_file_abs)
                 row_sources = self._write_delta_file(
                     delta_file_abs=full_file_abs,
-                    delta_file_rel=full_file_rel,
+                    delta_file_rel=final_file_rel,
                     delta_rows=full_rows,
                     new_version_id=new_v.id,
                 )
@@ -472,7 +491,7 @@ class VersionManager:
             all_sample_rows = [content for _, content, _ in new_rows]
             file_stats = self._compute_file_stats_for_rows(
                 rows=all_sample_rows,
-                file_path=full_file_rel if full_rows else delta_file_rel,
+                file_path=final_file_rel,
             )
             self._repo.bulk_upsert_file_stats(version_id=new_v.id, rows=iter(file_stats))
 
@@ -482,6 +501,24 @@ class VersionManager:
 
             # Update row count
             self._repo.set_row_count(version_id=new_v.id, row_count=len(new_rows))
+
+            # Re-fetch the version with updated row_count
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, dataset_id, version_number, parent_version_id, row_count, created_at "
+                    "FROM dataset_versions WHERE id = %s",
+                    (new_v.id,),
+                )
+                r = cur.fetchone()
+            assert r is not None
+            new_v = DatasetVersionMeta(
+                id=r["id"],
+                dataset_id=r["dataset_id"],
+                version_number=r["version_number"],
+                parent_version_id=r["parent_version_id"],
+                row_count=r["row_count"],
+                created_at=r["created_at"],
+            )
 
             # Update dataset's current_version_id
             with conn.cursor() as cur:
@@ -703,9 +740,9 @@ class VersionManager:
             self._repo.bulk_insert_annotations(rows=iter(tuples))
 
     def _inherit_field_indices(self, *, parent_version_id: int, _new_version_id: int) -> None:
-        indexed_fields = self._repo.list_indexed_fields(version_id=parent_version_id)
         # For each indexed field, reindex the new version
         # (We skip for now; user can call create_index manually)
+        pass
 
 
 def _safe_min(a: Any, b: Any) -> Any:
