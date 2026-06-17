@@ -36,11 +36,9 @@ Then read this file fully before doing anything else in this session.
 ## Current Project State
 
 **Working:**
-- **Release Agent created!** (2026-06-17). Project-level Claude Code agent for automated releases:
-  - `.claude/agents/release-agent.md` - Agent definition
-  - `.claude/skills/release.md` - Skill interface for `/release` command
-  - `scripts/release.py` - Python release script with full automation
-  - Features: version validation, git commit/tag/push, CI monitoring, GitHub Release creation
+- **Git & CI Agent created!** (2026-06-17). Project-level Claude Code agent for automated commit/push/CI-monitor workflows:
+  - `.claude/agents/git-ci-agent.md` - Agent definition (replaces old release-agent)
+  - Features: commit management, push to remote, GitHub Actions CI monitoring, test report analysis
 - **Phase 1 complete!** `v0.0.1` dev tag (2026-06-17).
   - F1–F10: register, list/info, tag rows, note rows, field search, tag search, combined search, delete, rename, overwrite.
   - 8-layer test suite (L1–L8) implemented and passing — 220 tests + 1M-row scale smoke.

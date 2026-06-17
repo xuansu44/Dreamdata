@@ -1048,8 +1048,10 @@ class Dataset:
         If use_index is True and the filtered field has an index, the index
         will be used to prune rows before scanning.
 
-        Example:
+        Example::
+
             from dreamdata import range_filter, regex_filter, and_filter
+
             ds.search_with_filter(range_filter("score", 0.8, 1.0))
             ds.search_with_filter(regex_filter("title", "^A"))
             ds.search_with_filter(and_filter(

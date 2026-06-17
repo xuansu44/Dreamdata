@@ -113,11 +113,9 @@ Lives under `tests/benchmarks/` using `pytest-benchmark`.
 - **`CHANGELOG.md`** maintained from day one (Keep a Changelog format; sections: Added / Changed / Removed / Fixed).
 - **Tagging:** `git tag v0.0.x` after each phase boundary; `git tag v0.1.0` at release.
 - Post-0.1.0: breaking API changes require a minor bump (`0.2.0`) and a migration note in CHANGELOG.
-- **Release Agent Automation** (2026-06-17 added):
-  - Project-level Claude Code agent under `.claude/agents/release-agent.md`
-  - Skill interface: `/release <version> <notes>`
-  - Script: `scripts/release.py`
-  - Automates: version validation → git commit/tag/push → CI monitoring → GitHub Release creation
+- **Git & CI Agent** (2026-06-17 added, replaces old release-agent):
+  - Project-level Claude Code agent under `.claude/agents/git-ci-agent.md`
+  - Automates: commit staging/writing → push to remote → GitHub Actions CI monitoring → test report analysis
   - Requires: GitHub CLI (`gh`) authenticated, git remote configured
 
 ## Security Conventions

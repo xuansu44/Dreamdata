@@ -1,6 +1,6 @@
 ---
 name: release-a-version
-description: How to cut a release using the project's Release Agent — version bump, git tag, CI monitoring, GitHub Release
+description: How to cut a release — version bump, git tag, CI monitoring, GitHub Release creation
 triggers:
   - "release"
   - "cut a version"
@@ -16,7 +16,7 @@ last_updated: 2026-06-17
 
 ## Context
 
-This project has a **Release Agent** that automates the full release workflow. The agent lives in the project (not global) under `.claude/`.
+Releases are done manually. There is no automated release script — the old `scripts/release.py` and old Release Agent have been removed; the project now uses the **Git & CI Agent** (`.claude/agents/git-ci-agent.md`) for commit/push/CI-monitor workflows only.
 
 Before releasing:
 - Make sure `main` is green on `ci-main.yml`
@@ -26,23 +26,7 @@ Before releasing:
 
 ## Steps
 
-### Option A: Use the Release Skill (recommended)
-
-In Claude Code:
-
-```
-/release 0.2.0 "Adds advanced filtering and field indexing"
-```
-
-### Option B: Run the script directly
-
-```bash
-./scripts/release.py 0.2.0 "Adds advanced filtering and field indexing"
-```
-
-### Option C: Manual (emergency only)
-
-Only if the Release Agent fails:
+### Manual release
 
 1. Update version in `pyproject.toml`
 2. Commit: `git commit -m "Release v0.2.0"`
@@ -50,13 +34,11 @@ Only if the Release Agent fails:
 4. Push: `git push && git push origin v0.2.0`
 5. Wait for CI to pass
 6. Build: `uv build`
-7. Create GitHub Release manually
+7. Create GitHub Release: `gh release create v0.2.0 --title "v0.2.0" --notes "..." dist/*`
 
 ## Gotchas
 
-- **Don't skip CI unless emergency** — `--skip-ci` flag exists but should only be used for hotfixes when CI is broken for unrelated reasons
-- **Don't release from a dirty working directory** — the script blocks this; stash/commit first
-- **Version numbers don't need `v` prefix** — the script normalizes it, but you can provide it or not
+- **Don't release from a dirty working directory** — stash/commit first
 - **Chinese docs path** — make sure `ci-main.yml` builds Chinese docs to `docs/build/zh_CN`, not `docs/build/html/zh_CN` (fixed 2026-06-17)
 - **GitHub Pages deploys automatically** — after CI passes, the `deploy-pages` job runs
 
@@ -69,13 +51,6 @@ Only if the Release Agent fails:
 - [ ] Verify git tag exists: `git tag -l v0.2.0`
 
 ## Debug If Something Breaks
-
-### Release script fails to find `gh`
-
-```bash
-gh auth status  # check if authenticated
-gh auth login   # re-authenticate if needed
-```
 
 ### CI fails after push
 
@@ -90,15 +65,13 @@ gh auth login   # re-authenticate if needed
 
 ### GitHub Release didn't get created
 
-1. Check if `dist/` has the built artifacts: `ls -la dist/`
-2. Check if `gh release create` failed — re-run manually:
-   ```bash
-   gh release create v0.2.0 --title "v0.2.0" --notes "..." dist/*
-   ```
+```bash
+gh release create v0.2.0 --title "v0.2.0" --notes "..." dist/*
+```
 
 ## Update Scaffold
 
-- [x] Updated `.mex/ROUTER.md` "Current Project State" to mention Release Agent
-- [x] Updated `.mex/context/process.md` Release Policy section
-- [x] Created this pattern file
+- [ ] Updated `.mex/ROUTER.md` "Current Project State" to mention the agent change
+- [ ] Updated `.mex/context/process.md` Release Policy section
+- [ ] Updated this pattern file
 - [ ] Add to `patterns/INDEX.md`

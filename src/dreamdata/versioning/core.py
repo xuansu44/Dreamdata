@@ -690,7 +690,7 @@ class VersionManager:
             ]
             self._repo.bulk_insert_annotations(rows=iter(tuples))
 
-    def _inherit_field_indices(self, *, parent_version_id: int, new_version_id: int) -> None:
+    def _inherit_field_indices(self, *, parent_version_id: int, _new_version_id: int) -> None:
         indexed_fields = self._repo.list_indexed_fields(version_id=parent_version_id)
         # For each indexed field, reindex the new version
         # (We skip for now; user can call create_index manually)
