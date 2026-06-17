@@ -814,15 +814,19 @@ class MetaRepository:
     ) -> int:
         """Bulk insert annotations for F22 tag/index inheritance."""
         count = 0
+
         def _row_iter() -> Iterator[tuple[int, str, int, str, str]]:
             nonlocal count
             for version_id, user_id, row_idx, kind, value in rows:
                 count += 1
                 yield (version_id, user_id, row_idx, kind, value)
+
         with self._conn.transaction() as conn:
             with conn.cursor() as cur:
                 with cur.copy(
-                    sql.SQL("COPY user_annotations (version_id, user_id, row_idx, kind, value) FROM STDIN")
+                    sql.SQL(
+                        "COPY user_annotations (version_id, user_id, row_idx, kind, value) FROM STDIN"
+                    )
                 ) as copy:
                     for row in _row_iter():
                         copy.write_row(row)
@@ -850,11 +854,17 @@ class MetaRepository:
             r = cur.fetchone()
             return int(r["id"]) if r else -1
 
-    def list_parquet_caches(self, *, version_id: int) -> list[tuple[int, str | None, str, str, int, int, Any, Any]]:
+    def list_parquet_caches(
+        self, *, version_id: int
+    ) -> list[tuple[int, str | None, str, str, int, int, Any, Any]]:
         """List Parquet caches for a version."""
         # First check if the table exists
         with self._conn.connection.cursor() as cur:
-            cur.execute(sql.SQL("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'parquet_caches'"))
+            cur.execute(
+                sql.SQL(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'parquet_caches'"
+                )
+            )
             if not cur.fetchone():
                 return []
         # Table exists, query it
@@ -866,8 +876,16 @@ class MetaRepository:
             (version_id,),
         )
         return [
-            (r["id"], r["field_path"], r["cache_file_path"], r["cache_kind"],
-             r["row_count"], r["file_count"], r["created_at"], r["last_used_at"])
+            (
+                r["id"],
+                r["field_path"],
+                r["cache_file_path"],
+                r["cache_kind"],
+                r["row_count"],
+                r["file_count"],
+                r["created_at"],
+                r["last_used_at"],
+            )
             for r in rows
         ]
 

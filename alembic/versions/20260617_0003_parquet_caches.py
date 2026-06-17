@@ -28,7 +28,12 @@ def upgrade() -> None:
         sa.Column("cache_kind", sa.Text, nullable=False),
         sa.Column("row_count", sa.BigInteger, nullable=False),
         sa.Column("file_count", sa.BigInteger, nullable=False),
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.Column("last_used_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(
             ["version_id"],
@@ -39,7 +44,9 @@ def upgrade() -> None:
         comment="Parquet caches for faster reads (phase 4).",
     )
     op.create_index("parquet_caches_version_id_idx", "parquet_caches", ["version_id"])
-    op.create_index("parquet_caches_version_kind_idx", "parquet_caches", ["version_id", "cache_kind"])
+    op.create_index(
+        "parquet_caches_version_kind_idx", "parquet_caches", ["version_id", "cache_kind"]
+    )
 
 
 def downgrade() -> None:

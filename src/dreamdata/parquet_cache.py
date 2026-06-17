@@ -77,7 +77,9 @@ class ParquetCacheManager:
         If field_path is provided, creates a columnar cache for that field.
         """
         if pa is None or pq is None:
-            raise ImportError("pyarrow is required for Parquet cache functionality. Install with: pip install 'dreamdata[parquet]'")
+            raise ImportError(
+                "pyarrow is required for Parquet cache functionality. Install with: pip install 'dreamdata[parquet]'"
+            )
 
         # Get version metadata to find dataset name
         with self._meta_conn.connection.cursor() as cur:
@@ -123,7 +125,9 @@ class ParquetCacheManager:
         # Write Parquet
         cache_kind = "full" if field_path is None else f"field:{field_path}"
         cache_file_name = f"{uuid.uuid4().hex[:16]}.parquet"
-        cache_dir = self._workspace.root / ".engine" / "parquet_cache" / dataset_name / f"v{version_number}"
+        cache_dir = (
+            self._workspace.root / ".engine" / "parquet_cache" / dataset_name / f"v{version_number}"
+        )
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_file_abs = cache_dir / cache_file_name
         cache_file_rel = self._workspace.to_rel(cache_file_abs)
@@ -223,11 +227,13 @@ class ParquetCacheManager:
 
         # Rename columns to match expected schema (file_idx, row_idx, data)
         # For simplicity, we just set file_idx=0 for all
-        out_df = pd.DataFrame({
-            "file_idx": 0,
-            "row_idx": df["_row_idx"],
-            "data": df["data"],
-        })
+        out_df = pd.DataFrame(
+            {
+                "file_idx": 0,
+                "row_idx": df["_row_idx"],
+                "data": df["data"],
+            }
+        )
         out_df["file_idx"] = out_df["file_idx"].astype("int64")
         out_df["row_idx"] = out_df["row_idx"].astype("int64")
 

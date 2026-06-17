@@ -116,7 +116,16 @@ class Engine:
     ``USER_ID``).
     """
 
-    __slots__ = ("_duckdb", "_meta_conn", "_parquet_manager", "_repo", "_settings", "_user_id", "_version_manager", "_workspace")
+    __slots__ = (
+        "_duckdb",
+        "_meta_conn",
+        "_parquet_manager",
+        "_repo",
+        "_settings",
+        "_user_id",
+        "_version_manager",
+        "_workspace",
+    )
 
     def __init__(self, settings: Settings | None = None) -> None:
         if settings is None:
@@ -334,7 +343,9 @@ class Engine:
             v = current_v
         else:
             # Look up specific version
-            v_meta = self._version_manager.get_version(dataset_name=name, version_number=version_number)
+            v_meta = self._version_manager.get_version(
+                dataset_name=name, version_number=version_number
+            )
             # Get full version metadata
             with self._meta_conn.connection.cursor() as cur:
                 cur.execute(
@@ -807,7 +818,9 @@ class Dataset:
             file_to_global: dict[str, list[tuple[int, int]]] = {p: [] for p in files_rel}
             for rs in sources:
                 if rs.file_path in file_to_global:
-                    file_to_global[rs.file_path].append((rs.row_idx, len(file_to_global[rs.file_path])))
+                    file_to_global[rs.file_path].append(
+                        (rs.row_idx, len(file_to_global[rs.file_path]))
+                    )
             # Build reverse lookup: global row idx -> (file_idx, file_row_idx)
             global_to_file: dict[int, tuple[int, int]] = {}
             for file_idx, file_path in enumerate(files_rel):

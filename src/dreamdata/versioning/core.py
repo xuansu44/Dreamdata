@@ -71,6 +71,7 @@ def _canonical_json_hash(value: object) -> bytes:
     - Floats in shortest representation
     - Unicode normalized to NFC
     """
+
     # Build a canonical representation
     def _canonicalize(v: object) -> object:
         if v is None or isinstance(v, (bool, int, float)):
@@ -86,7 +87,9 @@ def _canonical_json_hash(value: object) -> bytes:
             raise ValueError(f"Cannot canonicalize type {type(v)}")
 
     canonical = _canonicalize(value)
-    json_bytes = json.dumps(canonical, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    json_bytes = json.dumps(
+        canonical, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
     return hashlib.sha256(json_bytes).digest()
 
 
@@ -416,14 +419,16 @@ class VersionManager:
                 for parent_row in parent_rows:
                     if parent_row.content_hash == new_hash:
                         # Inherit from parent
-                        row_sources.append((
-                            new_logical_idx,
-                            parent_row.row_idx,  # TODO: we need the original source_version_id
-                            # For now, let's look up the row source
-                            "",  # placeholder
-                            0,
-                            0,
-                        ))
+                        row_sources.append(
+                            (
+                                new_logical_idx,
+                                parent_row.row_idx,  # TODO: we need the original source_version_id
+                                # For now, let's look up the row source
+                                "",  # placeholder
+                                0,
+                                0,
+                            )
+                        )
                         inherited = True
                         break
                 if not inherited:
@@ -620,13 +625,15 @@ class VersionManager:
 
             for scan in iter_jsonl_offsets(file_abs, strict=True):
                 value = parse_jsonl_line(file_abs, scan.line, byte_offset=scan.byte_offset)
-                row_sources.append((
-                    current_row_idx,
-                    version_id,
-                    file_rel,
-                    scan.byte_offset,
-                    scan.byte_length,
-                ))
+                row_sources.append(
+                    (
+                        current_row_idx,
+                        version_id,
+                        file_rel,
+                        scan.byte_offset,
+                        scan.byte_length,
+                    )
+                )
                 if sampled_here < self._settings.register_field_sample_size:
                     sample_rows.append(value)
                     sampled_here += 1
@@ -656,13 +663,15 @@ class VersionManager:
                 line_bytes = json.dumps(content, ensure_ascii=True).encode("utf-8")
                 line_length = len(line_bytes)
                 fh.write(line_bytes + b"\n")
-                row_sources.append((
-                    logical_idx,
-                    new_version_id,
-                    delta_file_rel,
-                    byte_offset,
-                    line_length,
-                ))
+                row_sources.append(
+                    (
+                        logical_idx,
+                        new_version_id,
+                        delta_file_rel,
+                        byte_offset,
+                        line_length,
+                    )
+                )
                 byte_offset += line_length + 1
 
         return row_sources
@@ -728,7 +737,9 @@ def _scan_files_for_registration(
     version_id: int,
     staged_files: list[tuple[Path, str]],
     sample_size: int,
-) -> tuple[int, list[tuple[int, int, str, int, int]], list[tuple[str, str, Any, Any, int]], list[object]]:
+) -> tuple[
+    int, list[tuple[int, int, str, int, int]], list[tuple[str, str, Any, Any, int]], list[object]
+]:
     row_sources: list[tuple[int, int, str, int, int]] = []
     file_stats: list[tuple[str, str, Any, Any, int]] = []
     total_rows = 0
@@ -740,13 +751,15 @@ def _scan_files_for_registration(
         sampled_here = 0
         for scan in iter_jsonl_offsets(file_abs, strict=True):
             value = parse_jsonl_line(file_abs, scan.line, byte_offset=scan.byte_offset)
-            row_sources.append((
-                total_rows + file_row_count,
-                version_id,
-                file_rel,
-                scan.byte_offset,
-                scan.byte_length,
-            ))
+            row_sources.append(
+                (
+                    total_rows + file_row_count,
+                    version_id,
+                    file_rel,
+                    scan.byte_offset,
+                    scan.byte_length,
+                )
+            )
             if sampled_here < sample_size:
                 sample_rows.append(value)
                 sampled_here += 1
