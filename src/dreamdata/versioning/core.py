@@ -229,6 +229,7 @@ class VersionManager:
                     (ds.id, new_version_number, parent_v.id),
                 )
                 r = cur.fetchone()
+            assert r is not None, "INSERT ... RETURNING must return a row"
             new_v = DatasetVersionMeta(
                 id=r["id"],
                 dataset_id=r["dataset_id"],
@@ -398,6 +399,7 @@ class VersionManager:
                     (ds.id, new_version_number, parent_v.id),
                 )
                 r = cur.fetchone()
+            assert r is not None, "INSERT ... RETURNING must return a row"
             new_v = DatasetVersionMeta(
                 id=r["id"],
                 dataset_id=r["dataset_id"],
@@ -533,6 +535,7 @@ class VersionManager:
                     (ds.id, new_version_number, parent_v.id),
                 )
                 r = cur.fetchone()
+            assert r is not None, "INSERT ... RETURNING must return a row"
             new_v = DatasetVersionMeta(
                 id=r["id"],
                 dataset_id=r["dataset_id"],
