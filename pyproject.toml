@@ -86,6 +86,10 @@ files = ["src/dreamdata"]
 module = ["duckdb.*", "psycopg.*", "pyarrow", "pyarrow.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "dreamdata.parquet_cache"
+disable_error_code = ["no-untyped-call"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

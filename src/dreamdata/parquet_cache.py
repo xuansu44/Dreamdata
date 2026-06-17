@@ -134,7 +134,7 @@ class ParquetCacheManager:
 
         # Write with pyarrow
         table = pa.Table.from_pandas(df)
-        pq.write_table(table, cache_file_abs, compression="snappy")  # type: ignore[no-untyped-call]
+        pq.write_table(table, cache_file_abs, compression="snappy")
 
         # Insert into metadata
         cache_id = self._repo.insert_parquet_cache(
