@@ -12,7 +12,17 @@
 1. **Install dependencies:**
 
    ```bash
+   # Core installation (JSONL only)
    uv sync --extra dev
+
+   # With Parquet cache support (optional)
+   uv sync --extra parquet --extra dev
+   ```
+
+   For users installing from PyPI:
+   ```bash
+   pip install dreamdata  # core
+   pip install "dreamdata[parquet]"  # with Parquet cache
    ```
 
 2. **Create a PostgreSQL database:**

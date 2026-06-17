@@ -36,6 +36,11 @@ Then read this file fully before doing anything else in this session.
 ## Current Project State
 
 **Working:**
+- **Release Agent created!** (2026-06-17). Project-level Claude Code agent for automated releases:
+  - `.claude/agents/release-agent.md` - Agent definition
+  - `.claude/skills/release.md` - Skill interface for `/release` command
+  - `scripts/release.py` - Python release script with full automation
+  - Features: version validation, git commit/tag/push, CI monitoring, GitHub Release creation
 - **Phase 1 complete!** `v0.0.1` dev tag (2026-06-17).
   - F1–F10: register, list/info, tag rows, note rows, field search, tag search, combined search, delete, rename, overwrite.
   - 8-layer test suite (L1–L8) implemented and passing — 220 tests + 1M-row scale smoke.
@@ -58,6 +63,14 @@ Then read this file fully before doing anything else in this session.
   - `rename_dataset` now updates `file_stats` paths in addition to `row_sources`
   - 219/220 tests passing (1 skipped); 8-layer suite continues to pass
   - Sphinx docs (`docs/source/phases/phase-2.md`) written
+- **v0.1.0 released!** (2026-06-17). First public stable release with SemVer guarantee.
+- **v0.2.0 released!** (2026-06-17). Phase 3 (versioning) + Phase 4 (Parquet cache) shipped!
+  - Phase 3: F16-F22 (list_versions, get_version, append, map, filter_map, overwrite creates new version, tag inheritance)
+  - Phase 4: F23-F26 (refresh_parquet_cache, list_parquet_caches, auto cache stub, cost-based routing stub)
+  - Alembic migrations 0002_field_index, 0003_parquet_caches
+  - Optional pyarrow dependency for Parquet cache
+  - 219/220 tests passing (1 skipped)
+  - Sphinx docs updated (phase-3.md, phase-4.md, quickstart, installation, index)
 - Testing strategy designed and locked (2026-06-17) — 8-layer fully-automated model, no manual-exploratory layer. See `.mex/context/testing.md`.
 - Coding conventions locked (2026-06-17) — Git workflow, error hierarchy, logging, config, type hints, comments, dependency management added to `.mex/context/conventions.md`.
 - Process policies locked (2026-06-17) — DoD, CI pipeline, code review, benchmarks, release policy, security in `.mex/context/process.md`. Phase-boundary review, 0.1.0 after Phase 2, per-phase SDK docs mandatory. See `.mex/context/decisions.md`.
@@ -78,9 +91,48 @@ Then read this file fully before doing anything else in this session.
 - **Release timing:** First public release `0.1.0` cuts NOW (Phase 2 complete)! Phase 1 and Phase 2 shipped under `0.0.x` dev tags; `0.1.0` is first stable release with SemVer stability guarantee. `CHANGELOG.md` maintained from day one.
 - **Per-phase docs mandatory:** Every phase ships updated SDK documentation alongside code; phase not done until `docs/source/phases/phase-N.md` written and `sphinx-build` clean. See `.mex/context/conventions.md` → Documentation section.
 
-**Not yet built (deferred phases):****
-- Phase 3: versioning — `row_sources` inheritance, COW, `map`/`filter_map`/`append`, version history. (Phase-1 overwrite is delete + re-register, NOT a version bump — true version-bump overwrite arrives here.)
-- Phase 4: Parquet cache, cost-based index-vs-scan.
+## v0.2.0 Planning
+
+**Scope:** Phase 3 (versioning) + Phase 4 (Parquet cache)
+
+### User Stories
+1. **View history:** As a data scientist, I want to `list_versions()` and `get_version(id)` to see and load previous versions.
+2. **Append safely:** As a data engineer, I want to `append(new_rows.jsonl)` to add data without copying the whole dataset, preserving old versions.
+3. **Cleanse with safety:** As a data scientist, I want to `map(fn)` to transform data while keeping the original version intact; unchanged rows are inherited via copy-on-write.
+4. **Filter low-quality:** As a data scientist, I want to `filter_map(fn)` to remove bad samples while preserving them in history.
+5. **Auto-accelerate queries:** As a data scientist, I want the system to auto-generate Parquet caches for hot queries, making them ≥5x faster.
+6. **Branch from history:** As a data scientist, I want to create new versions from old versions (`map(fn, parent_version=1)`) to experiment with different strategies.
+
+### Features (F16–F26)
+- **F16:** `list_versions(dataset)` — list all versions of a dataset
+- **F17:** `get_version(dataset, version_id)` — load a specific historical version
+- **F18:** `append(dataset, new_rows_jsonl, parent_version=None)` — append rows as new version
+- **F19:** `map(dataset, fn, parent_version=None)` — transform rows with copy-on-write
+- **F20:** `filter_map(dataset, fn, parent_version=None)` — filter + transform rows
+- **F21:** `register_dataset(..., overwrite=True)` — overwrite creates new version instead of delete+re-register
+- **F22:** Tag/index inheritance — unchanged rows inherit tags and indexes from parent
+- **F23:** `refresh_parquet_cache(dataset, fields=None)` — manually generate Parquet cache
+- **F24:** `list_parquet_caches(dataset)` — list existing Parquet caches
+- **F25:** Auto cache generation — hot queries trigger Parquet generation
+- **F26:** Cost-based query routing — auto-choose between index, JSONL scan, or Parquet
+
+### Test Strategy
+- L1: COW hash calculation, version chain logic, cost model
+- L2: `versioning/` components, `parquet_engine`, `meta/versioning_repository`
+- L3: SDK modules for versions, append, map, filter_map, parquet_cache
+- L4: Property tests for version invariants, COW correctness, inheritance
+- L5: Fuzz for deep version chains, concurrent branching, partial failures
+- L6: Scale smoke for 1M-row map, Parquet speedup, multi-version read
+- L7: Mutation testing for versioning and parquet modules
+- L8: E2E scenario covering full workflow (register → tag → append → map → filter_map → query with cache)
+
+### Non-Negotiables
+- JSONL files remain read-only
+- Versions are immutable after creation
+- DuckDB remains read-only for business data
+- SDK is the only public surface
+
+**Not yet built (deferred phases):**
 - Phase 5: FastAPI REST + Web UI.
 - Phase 6 (optional): Ray, object storage, fine-grained permissions/audit.
 

@@ -789,6 +789,8 @@ class MetaRepository:
                 tables.append(sql.Identifier("file_stats"))
             if "field_index" in existing:
                 tables.append(sql.Identifier("field_index"))
+            if "parquet_caches" in existing:
+                tables.append(sql.Identifier("parquet_caches"))
             if "dataset_versions" in existing:
                 tables.append(sql.Identifier("dataset_versions"))
             if "datasets" in existing:
@@ -804,3 +806,92 @@ class MetaRepository:
     def ping(self) -> bool:
         row = self._conn.fetchone(sql.SQL("SELECT 1 AS v"))
         return bool(row and row["v"] == 1)
+
+    def bulk_insert_annotations(
+        self,
+        *,
+        rows: Iterator[tuple[int, str, int, str, str]],
+    ) -> int:
+        """Bulk insert annotations for F22 tag/index inheritance."""
+        count = 0
+        def _row_iter() -> Iterator[tuple[int, str, int, str, str]]:
+            nonlocal count
+            for version_id, user_id, row_idx, kind, value in rows:
+                count += 1
+                yield (version_id, user_id, row_idx, kind, value)
+        with self._conn.transaction() as conn:
+            with conn.cursor() as cur:
+                with cur.copy(
+                    sql.SQL("COPY user_annotations (version_id, user_id, row_idx, kind, value) FROM STDIN")
+                ) as copy:
+                    for row in _row_iter():
+                        copy.write_row(row)
+        return count
+
+    def insert_parquet_cache(
+        self,
+        *,
+        version_id: int,
+        field_path: str | None,
+        cache_file_path: str,
+        cache_kind: str,
+        row_count: int,
+        file_count: int,
+    ) -> int:
+        """Insert a Parquet cache entry."""
+        with self._conn.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    "INSERT INTO parquet_caches (version_id, field_path, cache_file_path, cache_kind, row_count, file_count) "
+                    "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id"
+                ),
+                (version_id, field_path, cache_file_path, cache_kind, row_count, file_count),
+            )
+            r = cur.fetchone()
+            return int(r["id"]) if r else -1
+
+    def list_parquet_caches(self, *, version_id: int) -> list[tuple[int, str | None, str, str, int, int, Any, Any]]:
+        """List Parquet caches for a version."""
+        # First check if the table exists
+        with self._conn.connection.cursor() as cur:
+            cur.execute(sql.SQL("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'parquet_caches'"))
+            if not cur.fetchone():
+                return []
+        # Table exists, query it
+        rows = self._conn.fetchall(
+            sql.SQL(
+                "SELECT id, field_path, cache_file_path, cache_kind, row_count, file_count, created_at, last_used_at "
+                "FROM parquet_caches WHERE version_id = %s ORDER BY created_at DESC"
+            ),
+            (version_id,),
+        )
+        return [
+            (r["id"], r["field_path"], r["cache_file_path"], r["cache_kind"],
+             r["row_count"], r["file_count"], r["created_at"], r["last_used_at"])
+            for r in rows
+        ]
+
+    def delete_parquet_cache(self, *, cache_id: int) -> int:
+        """Delete a Parquet cache entry."""
+        with self._conn.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                sql.SQL("DELETE FROM parquet_caches WHERE id = %s"),
+                (cache_id,),
+            )
+            return cur.rowcount or 0
+
+    def touch_parquet_cache(self, *, cache_id: int) -> None:
+        """Update last_used_at for a cache."""
+        self._conn.execute(
+            sql.SQL("UPDATE parquet_caches SET last_used_at = now() WHERE id = %s"),
+            (cache_id,),
+        )
+
+    def delete_parquet_caches_for_version(self, *, version_id: int) -> int:
+        """Delete all caches for a version."""
+        with self._conn.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                sql.SQL("DELETE FROM parquet_caches WHERE version_id = %s"),
+                (version_id,),
+            )
+            return cur.rowcount or 0

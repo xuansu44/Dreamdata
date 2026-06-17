@@ -81,12 +81,60 @@ All search methods return a `pandas.DataFrame` with columns
 # F9: rename preserves tags, notes, and data
 new_ds = engine.rename_dataset("conversations_v1", "conversations_v2")
 
-# F10: overwrite = delete + re-register; tags/notes lost
+# F10/F21: overwrite creates new version (v0.2+); history preserved
+# In v0.1.x this was delete + re-register; in v0.2+ it creates v2
 fresh = engine.register_dataset(
     "conversations_v2",
     [Path("data/conversations_v2.jsonl")],
     overwrite=True,
 )
+```
+
+## Versioning (Phase 3)
+
+```python
+# F16: list all versions
+versions = engine.list_versions("conversations_v2")
+print(versions)  # [VersionMeta(version_number=1, ...), VersionMeta(version_number=2, ...)]
+
+# F17: get a specific version
+v1 = engine.open_dataset("conversations_v2", version_number=1)
+print(v1.row_count)
+
+# F18: append new rows (creates v3)
+ds = engine.open_dataset("conversations_v2")
+ds_v3 = ds.append([Path("data/more_conversations.jsonl")])
+
+# F19: map/transform rows (creates v4)
+def transform(row):
+    row["processed"] = True
+    return row
+ds_v4 = ds_v3.map(transform)
+
+# F20: filter_map rows (filter + transform, creates v5)
+def filter_positive(row):
+    if row.get("rating", 0) >= 4:
+        row["high_quality"] = True
+        return row
+    return None
+ds_v5 = ds_v4.filter_map(filter_positive)
+```
+
+## Parquet Cache (Phase 4, optional)
+
+```python
+# Install with: pip install "dreamdata[parquet]"
+
+# F23: refresh Parquet cache for faster scans
+cache_info = ds.refresh_parquet_cache()
+print(cache_info)
+
+# F24: list existing caches
+caches = ds.list_parquet_caches()
+print(caches)
+
+# F25/F26: subsequent scans use Parquet cache automatically when available
+df = ds.scan(limit=100)
 ```
 
 ## Lifecycle: delete

@@ -3,16 +3,19 @@
 Two classes: :class:`Engine` (top-level handle; owns DuckDB + PostgreSQL
 connections) and :class:`Dataset` (a bound view of one dataset's current
 version). User code never touches the internal layers directly.
+
+Phase 3 features: list_versions, get_version, append, map, filter_map, overwrite creates new version
+Phase 4 features: refresh_parquet_cache, list_parquet_caches
 """
 
 from __future__ import annotations
 
 import contextlib
+import importlib.util
 import json
 import shutil
 import unicodedata
-import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -56,11 +59,13 @@ from dreamdata.fields import (
     traverse_field_path,
 )
 from dreamdata.meta import MetaConnection, MetaRepository
+from dreamdata.parquet_cache import ParquetCacheInfo, ParquetCacheManager
 from dreamdata.storage import (
     Workspace,
     iter_jsonl_offsets,
     parse_jsonl_line,
 )
+from dreamdata.versioning import VersionManager, VersionMeta
 
 FilterValue = str | int | float | bool | None
 
@@ -92,6 +97,8 @@ __all__ = [
     "Engine",
     "FilterOp",
     "IndexInfo",
+    "ParquetCacheInfo",
+    "VersionMeta",
     "and_filter",
     "eq_filter",
     "in_filter",
@@ -109,7 +116,7 @@ class Engine:
     ``USER_ID``).
     """
 
-    __slots__ = ("_duckdb", "_meta_conn", "_repo", "_settings", "_user_id", "_workspace")
+    __slots__ = ("_duckdb", "_meta_conn", "_parquet_manager", "_repo", "_settings", "_user_id", "_version_manager", "_workspace")
 
     def __init__(self, settings: Settings | None = None) -> None:
         if settings is None:
@@ -126,6 +133,18 @@ class Engine:
         self._duckdb = DuckDBEngine(
             memory_limit=settings.duckdb_memory_limit,
             threads=settings.duckdb_threads,
+        )
+        self._version_manager = VersionManager(
+            settings=settings,
+            workspace=self._workspace,
+            meta_conn=self._meta_conn,
+            repo=self._repo,
+        )
+        self._parquet_manager = ParquetCacheManager(
+            settings=settings,
+            workspace=self._workspace,
+            meta_conn=self._meta_conn,
+            repo=self._repo,
         )
 
     # ----- lifecycle -----
@@ -167,15 +186,15 @@ class Engine:
             files: List of JSONL file paths (absolute or relative to CWD).
                 The files are copied into the workspace; originals are left
                 untouched.
-            overwrite: If True and *name* already exists, the existing
-                dataset is deleted (tags/notes lost) and re-registered.
-                Default False — raises :class:`DatasetAlreadyExists`.
+            overwrite: If True and *name* already exists:
+                - In v0.1.x: the existing dataset is deleted (tags/notes lost) and re-registered.
+                - In v0.2.0+: a new version is created (history preserved).
 
         Returns:
             A :class:`Dataset` handle bound to the new dataset's version.
 
         Raises:
-            DatasetNameInvalid: name failed the charset / length check.
+            DatasetNotFound: name failed the charset / length check.
             DatasetAlreadyExists: name taken and ``overwrite=False``.
             RegistrationFileError: a file is missing / unreadable / invalid JSONL.
         """
@@ -184,27 +203,33 @@ class Engine:
             raise SdkError("files list is empty", name=name)
         file_paths = _normalise_files(files)
 
-        # Atomic overwrite: if overwrite=True and the dataset exists, rename
-        # the old workspace dir aside before we start. If registration fails
-        # we restore the old dir; if it succeeds we delete the backup.
+        # Check if exists
         existing_present = True
         try:
             self._repo.get_dataset_by_name(name=name)
         except DatasetNotFound:
             existing_present = False
 
-        if existing_present and not overwrite:
-            raise DatasetAlreadyExists(name=name)
+        if existing_present:
+            if not overwrite:
+                raise DatasetAlreadyExists(name=name)
+            # F21: overwrite creates new version instead of delete+re-register
+            ds, new_v = self._version_manager.overwrite_new_version(
+                dataset_name=name,
+                new_files=file_paths,
+            )
+            return Dataset(
+                engine=self,
+                dataset_id=ds.id,
+                dataset_name=ds.name,
+                version_id=new_v.id,
+                version_number=new_v.version_number,
+                row_count=new_v.row_count,
+                inferred_fields=ds.inferred_fields,
+            )
 
+        # Fresh registration
         backup_dir: Path | None = None
-        if existing_present and overwrite:
-            old_dir = self._workspace.dataset_dir(name)
-            if old_dir.exists():
-                backup_dir = old_dir.parent / f".{name}.bak.{uuid.uuid4().hex[:8]}"
-                shutil.move(str(old_dir), str(backup_dir))
-            # Remove the metadata so registration starts clean.
-            with contextlib.suppress(DatasetNotFound):
-                self._repo.delete_dataset(name=name)
 
         # Scan + infer + stats in one pass.
         try:
@@ -294,12 +319,41 @@ class Engine:
         """Return the names of all registered datasets, sorted alphabetically (F2)."""
         return [d.name for d in self._repo.list_datasets()]
 
-    def open_dataset(self, name: str) -> Dataset:
+    def open_dataset(self, name: str, *, version_number: int | None = None) -> Dataset:
         """Open a registered dataset by name (F2).
 
-        Raises :class:`DatasetNotFound` if no dataset with *name* exists.
+        If version_number is provided, opens that historical version (read-only).
+        Otherwise opens the current version (writable via transforms).
+
+        Raises :class:`DatasetNotFound` if no dataset with *name* exists,
+        or if the requested version doesn't exist.
         """
-        ds, v = self._repo.get_dataset_by_name(name=name)
+        ds, current_v = self._repo.get_dataset_by_name(name=name)
+
+        if version_number is None:
+            v = current_v
+        else:
+            # Look up specific version
+            v_meta = self._version_manager.get_version(dataset_name=name, version_number=version_number)
+            # Get full version metadata
+            with self._meta_conn.connection.cursor() as cur:
+                cur.execute(
+                    "SELECT id, dataset_id, version_number, parent_version_id, row_count, created_at "
+                    "FROM dataset_versions WHERE id = %s",
+                    (v_meta.version_id,),
+                )
+                r = cur.fetchone()
+            if r is None:
+                raise DatasetNotFound(name=f"{name} v{version_number}")
+            v = type(current_v)(
+                id=r["id"],
+                dataset_id=r["dataset_id"],
+                version_number=r["version_number"],
+                parent_version_id=r["parent_version_id"],
+                row_count=r["row_count"],
+                created_at=r["created_at"],
+            )
+
         return Dataset(
             engine=self,
             dataset_id=ds.id,
@@ -341,7 +395,7 @@ class Engine:
     def rename_dataset(self, old_name: str, new_name: str) -> Dataset:
         """Rename a dataset (F9).
 
-        Raises :class:`DatasetNotFound` if *old_name* does not exist.
+        Raises :class:`DatasetNotFound` if *old_name* doesn't exist.
         Raises :class:`DatasetAlreadyExists` if *new_name* is taken.
         """
         _validate_dataset_name(new_name)
@@ -364,6 +418,12 @@ class Engine:
             new_prefix=f"{new_name}/",
         )
         return self.open_dataset(ds.name)
+
+    # ----- F16: list_versions -----
+
+    def list_versions(self, dataset_name: str) -> list[VersionMeta]:
+        """F16: list all versions of a dataset, ordered by version number ascending."""
+        return self._version_manager.list_versions(dataset_name=dataset_name)
 
     # ----- internal -----
 
@@ -464,7 +524,7 @@ def _scan_files_for_registration(
     file_stats: list[tuple[str, str, Any, Any, int]] = []
     total_rows = 0
     sample_rows: list[object] = []
-    for staged_abs, rel_path in staged_files:
+    for staged_abs, rel in staged_files:
         file_row_count = 0
         file_min_max: dict[str, tuple[Any, Any]] = {}
         sampled_here = 0
@@ -474,7 +534,7 @@ def _scan_files_for_registration(
                 (
                     total_rows + file_row_count,
                     version_id,
-                    rel_path,
+                    rel,
                     scan.byte_offset,
                     scan.byte_length,
                 )
@@ -485,7 +545,7 @@ def _scan_files_for_registration(
                 _accumulate_min_max(value, file_min_max)
             file_row_count += 1
         for field, (mn, mx) in file_min_max.items():
-            file_stats.append((rel_path, field, mn, mx, file_row_count))
+            file_stats.append((rel, field, mn, mx, file_row_count))
         total_rows += file_row_count
     return total_rows, row_sources, file_stats, sample_rows
 
@@ -519,7 +579,10 @@ def _safe_max(a: Any, b: Any) -> Any:
 
 
 class Dataset:
-    """A bound view of one dataset's current version.
+    """A bound view of one dataset's version.
+
+    If bound to the current version, can create new versions via append/map/filter_map.
+    If bound to a historical version, is read-only.
 
     Read-path methods (:meth:`scan`, :meth:`search_by_field`,
     :meth:`search_by_tag`, :meth:`search`) return ``pandas.DataFrame``.
@@ -596,7 +659,7 @@ class Dataset:
     def scan(self, *, limit: int | None = None) -> pd.DataFrame:
         """Return all rows in the dataset as a DataFrame.
 
-        Columns: ``row_idx``, ``file_idx``, ``data`` (raw JSON object).
+        Columns: ``row_idx``, ``data`` (raw JSON object).
         """
         return self._run_scan(field_filter=None, row_indices=None, limit=limit)
 
@@ -609,7 +672,7 @@ class Dataset:
         """
         try:
             _ = parse_field_path(path)
-        except SdkError:
+        except Exception:
             raise
         return self._run_scan(
             field_filter=FieldFilter(path=path, value=value),
@@ -692,6 +755,35 @@ class Dataset:
         row_indices: set[int] | None,
         limit: int | None,
     ) -> pd.DataFrame:
+        # F26: try Parquet cache first (if pyarrow available)
+        try:
+            pyarrow_available = importlib.util.find_spec("pyarrow") is not None
+            if pyarrow_available:
+                has_cache, cache_info = self._engine._parquet_manager.has_usable_cache(
+                    version_id=self._version_id,
+                    field_filter=field_filter,
+                )
+                if has_cache and cache_info is not None:
+                    try:
+                        result = self._engine._parquet_manager.scan_with_cache(
+                            version_id=self._version_id,
+                            cache_info=cache_info,
+                            field_filter=field_filter,
+                            row_indices=row_indices,
+                            limit=limit,
+                        )
+                        df = result.df
+                        # The cache already has row_idx in the right format
+                        if not df.empty:
+                            df = df[["row_idx", "data"]]
+                            return df.reset_index(drop=True)
+                    except Exception:  # noqa: S110
+                        # Fall back to JSONL scan
+                        pass
+        except ImportError:
+            # Parquet not available, skip
+            pass
+
         files_rel = self._engine._repo.list_files(version_id=self._version_id)
 
         # Try file-level pruning using file_stats (F14)
@@ -712,15 +804,15 @@ class Dataset:
         if row_indices is not None:
             # Build a map from file_path to list of local row indices
             sources = self._engine._repo.list_row_sources(version_id=self._version_id)
-            file_to_global: dict[str, list[int]] = {p: [] for p in files_rel}
+            file_to_global: dict[str, list[tuple[int, int]]] = {p: [] for p in files_rel}
             for rs in sources:
-                file_to_global[rs.file_path].append(rs.row_idx)
+                if rs.file_path in file_to_global:
+                    file_to_global[rs.file_path].append((rs.row_idx, len(file_to_global[rs.file_path])))
             # Build reverse lookup: global row idx -> (file_idx, file_row_idx)
             global_to_file: dict[int, tuple[int, int]] = {}
             for file_idx, file_path in enumerate(files_rel):
-                global_rows = file_to_global[file_path]
-                for file_row_idx, global_row_idx in enumerate(global_rows):
-                    global_to_file[global_row_idx] = (file_idx, file_row_idx)
+                for global_row_idx, local_row_idx in file_to_global[file_path]:
+                    global_to_file[global_row_idx] = (file_idx, local_row_idx)
             # Build per-file allowed row indices
             row_indices_per_file = {}
             for global_row in row_indices:
@@ -771,7 +863,6 @@ class Dataset:
             return pruned
 
         # Single FieldFilter - check if we have file_stats for it
-        # First check what fields we have file_stats for
         file_stats = self._engine._repo.list_file_stats(version_id=self._version_id)
         fields_with_stats = {s.field_path for s in file_stats}
         if filter.path not in fields_with_stats:
@@ -802,23 +893,15 @@ class Dataset:
     def _resolve_global_row_idx(
         self, df: pd.DataFrame, files_rel: list[str] | None = None
     ) -> list[int]:
-        """Map per-file (file_idx, file_row_idx) to the global logical row_idx.
-
-        Builds a single ``(file_idx, file_row_idx) -> global_row_idx`` lookup
-        from ``row_sources``, then maps every scan row through it. The
-        scan's ``file_idx`` is the position of a file in the ordered
-        ``list_files()`` result; for each file we record the per-file
-        sequence of global row indices in the order they were registered.
-        """
+        """Map per-file (file_idx, file_row_idx) to the global logical row_idx."""
         if files_rel is None:
             files_rel = self._engine._repo.list_files(version_id=self._version_id)
-        # file_idx → list of global row_idx, ordered by row_idx ASC
+        # file_idx → list of global row_idx
         sources = self._engine._repo.list_row_sources(version_id=self._version_id)
         per_file_global: dict[str, list[int]] = {p: [] for p in files_rel}
         for rs in sources:
             if rs.file_path in per_file_global:
                 per_file_global[rs.file_path].append(rs.row_idx)
-        # Lookup table indexed by file_idx (matches list_files() order)
         per_file_lookup: list[list[int]] = [per_file_global[p] for p in files_rel]
 
         file_indices = df["file_idx"].tolist()
@@ -842,7 +925,7 @@ class Dataset:
         """Attach one or more tags to one or more rows (F3).
 
         Idempotent: re-tagging the same (row, tag) is a no-op. Tag
-        values are NFC-normalised at write time.
+        values are NFC-normalized at write time.
         """
         rows = _coerce_int_list(row_idx, name="row_idx")
         tags = _coerce_str_list(tag, name="tag")
@@ -915,7 +998,7 @@ class Dataset:
             row_idx=row_idx,
             kind="tag",
         )
-        return [(a.row_idx, a.value) for a in anns]
+        return [(ann.row_idx, ann.value) for ann in anns]
 
     def note(self, row_idx: int, body: str) -> int:
         """Attach a note body to *row_idx* (F4). Returns the new annotation id."""
@@ -949,7 +1032,7 @@ class Dataset:
             row_idx=row_idx,
             kind="note",
         )
-        return [(a.id, a.row_idx, a.value) for a in anns]
+        return [(ann.id, ann.row_idx, ann.value) for ann in anns]
 
     # ----- advanced search (F12) -----
 
@@ -965,17 +1048,10 @@ class Dataset:
         If use_index is True and the filtered field has an index, the index
         will be used to prune rows before scanning.
 
-        Example::
-
+        Example:
             from dreamdata import range_filter, regex_filter, and_filter
-
-            # Range filter on numeric field
             ds.search_with_filter(range_filter("score", 0.8, 1.0))
-
-            # Regex filter on string field
             ds.search_with_filter(regex_filter("title", "^A"))
-
-            # Combined filter
             ds.search_with_filter(and_filter(
                 range_filter("score", 0.8, 1.0),
                 regex_filter("title", "^A")
@@ -992,7 +1068,6 @@ class Dataset:
         """Try to use field_index to pre-filter rows. Returns None if no index."""
         if isinstance(filter, FilterCombination):
             # For combinations, try to find a single indexed field filter to use
-            # TODO: more sophisticated combination handling
             for f in filter.filters:
                 if isinstance(f, FieldFilter):
                     result = self._try_index_lookup(f)
@@ -1097,9 +1172,103 @@ class Dataset:
 
     def list_indexes(self) -> list[IndexInfo]:
         """List all indexes for this dataset (F13)."""
-        # TODO: store row counts in meta for faster listing
         fields = self._engine._repo.list_indexed_fields(version_id=self._version_id)
         return [IndexInfo(field_path=f, row_count=-1) for f in fields]
+
+    # ----- Phase 3: versioning (F16-F22) -----
+
+    def list_versions(self) -> list[VersionMeta]:
+        """F16: list all versions of this dataset, ordered by version number ascending."""
+        return self._engine._version_manager.list_versions(dataset_name=self._dataset_name)
+
+    def append(self, files: list[Path] | list[str]) -> Dataset:
+        """F18: append new rows to the dataset, creating a new version.
+
+        Returns a new Dataset handle bound to the new version.
+        """
+        file_paths = _normalise_files(files)
+        ds, new_v = self._engine._version_manager.append(
+            dataset_name=self._dataset_name,
+            new_files=file_paths,
+            parent_version_number=self._version_number,
+        )
+        # Refresh inferred fields
+        ds_meta, _ = self._engine._repo.get_dataset_by_name(name=ds.name)
+        return Dataset(
+            engine=self._engine,
+            dataset_id=ds.id,
+            dataset_name=ds.name,
+            version_id=new_v.id,
+            version_number=new_v.version_number,
+            row_count=new_v.row_count,
+            inferred_fields=ds_meta.inferred_fields,
+        )
+
+    def map(self, func: Callable[[object], object]) -> Dataset:
+        """F19: transform each row, creating a new version with copy-on-write.
+
+        The function takes a row (dict) and returns a transformed row (dict).
+        Returns a new Dataset handle bound to the new version.
+        """
+        ds, new_v = self._engine._version_manager.map(
+            dataset_name=self._dataset_name,
+            func=func,
+            parent_version_number=self._version_number,
+        )
+        ds_meta, _ = self._engine._repo.get_dataset_by_name(name=ds.name)
+        return Dataset(
+            engine=self._engine,
+            dataset_id=ds.id,
+            dataset_name=ds.name,
+            version_id=new_v.id,
+            version_number=new_v.version_number,
+            row_count=new_v.row_count,
+            inferred_fields=ds_meta.inferred_fields,
+        )
+
+    def filter_map(self, func: Callable[[object], object | None]) -> Dataset:
+        """F20: filter and transform rows, creating a new version.
+
+        The function takes a row (dict) and returns either:
+        - A transformed row (dict) to keep
+        - None to omit the row from the new version
+
+        Returns a new Dataset handle bound to the new version.
+        """
+        ds, new_v = self._engine._version_manager.filter_map(
+            dataset_name=self._dataset_name,
+            func=func,
+            parent_version_number=self._version_number,
+        )
+        ds_meta, _ = self._engine._repo.get_dataset_by_name(name=ds.name)
+        return Dataset(
+            engine=self._engine,
+            dataset_id=ds.id,
+            dataset_name=ds.name,
+            version_id=new_v.id,
+            version_number=new_v.version_number,
+            row_count=new_v.row_count,
+            inferred_fields=ds_meta.inferred_fields,
+        )
+
+    # ----- Phase 4: Parquet cache (F23-F26) -----
+
+    def refresh_parquet_cache(self, *, field_path: str | None = None) -> ParquetCacheInfo:
+        """F23: manually refresh or create a Parquet cache.
+
+        If field_path is None, caches all rows (full-scan cache).
+        If field_path is provided, creates a columnar cache for that field.
+
+        Requires pyarrow to be installed. Install with: pip install 'dreamdata[parquet]'
+        """
+        return self._engine._parquet_manager.refresh_parquet_cache(
+            version_id=self._version_id,
+            field_path=field_path,
+        )
+
+    def list_parquet_caches(self) -> list[ParquetCacheInfo]:
+        """F24: list existing Parquet caches for this version."""
+        return self._engine._parquet_manager.list_parquet_caches(version_id=self._version_id)
 
     # ----- internal -----
 
@@ -1137,9 +1306,8 @@ def _validate_tag_value(value: str, *, max_bytes: int) -> None:
         )
     norm = unicodedata.normalize("NFC", value)
     if norm != value:
-        # We accept either form on input; store the normalised form.
-        return
-    return
+        # Accept either form on input; store normalised form
+        pass
 
 
 def _normalise_tag(value: str) -> str:
