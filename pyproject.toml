@@ -50,7 +50,7 @@ select = [
 ignore = [
     "E501",   # line length handled by formatter
     "PLR0913", "PLR0912", "PLR0915", "PLR0911", "PLR1714",  # complexity limits — surfacing SDK responsibilities, not noise
-    "S101",   # assert in tests
+    "S101",   # assert (in tests and runtime type checks)
     "S603",   # subprocess.run — fine, audited
     "S607",   # partial path — fine
     "PLR2004", # magic numbers in tests

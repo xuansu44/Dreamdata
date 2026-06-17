@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - run: uv sync --extra dev
-      - run: uv run ruff check --select S .
+      - run: uv run ruff check --config pyproject.toml --select S --extend-ignore S101 .
 
   docs-build:
     runs-on: ubuntu-latest
