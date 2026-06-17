@@ -177,9 +177,7 @@ class TestScanFilesForRegistration:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             file_path = tmp_path / "data.jsonl"
-            file_path.write_text(
-                '{"id": 1, "name": "Alice"}\n{"id": 2, "name": "Bob"}\n'
-            )
+            file_path.write_text('{"id": 1, "name": "Alice"}\n{"id": 2, "name": "Bob"}\n')
             staged_files = [(file_path, "data.jsonl")]
 
             total_rows, row_sources, file_stats, sample_rows = _scan_files_for_registration(
