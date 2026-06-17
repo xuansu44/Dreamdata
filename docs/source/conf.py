@@ -12,7 +12,7 @@ sys.path.insert(0, str(SRC_ROOT))
 # -- Project information -----------------------------------------------------
 project = "dreamdata"
 author = "dreamdata"
-release = "0.0.1"
+release = "0.1.0"
 
 # -- Bilingual configuration --------------------------------------------------
 language = "en"
@@ -43,7 +43,7 @@ html_theme = "furo"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_theme_options = {
-    "source_repository": "https://github.com/dreamdata/dreamdata",
+    "source_repository": "https://github.com/xuansu44/Dreamdata",
     "source_branch": "main",
     "source_directory": "docs/source/",
 }
