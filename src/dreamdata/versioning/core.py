@@ -270,7 +270,7 @@ class VersionManager:
             self._inherit_annotations(parent_version_id=parent_v.id, new_version_id=new_v.id)
 
             # Inherit field indices
-            self._inherit_field_indices(parent_version_id=parent_v.id, new_version_id=new_v.id)
+            self._inherit_field_indices(parent_version_id=parent_v.id, _new_version_id=new_v.id)
 
             # Update row count
             total_rows = len(all_row_sources)
