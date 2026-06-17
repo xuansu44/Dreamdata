@@ -19,7 +19,7 @@ edges:
     condition: when a process policy's reasoning is needed
   - target: context/setup.md
     condition: when CI reproduces local environment
-last_updated: 2026-06-17
+last_updated: 2026-06-17 (git-ci-agent Monitor approach updated)
 ---
 
 # Process
@@ -115,7 +115,7 @@ Lives under `tests/benchmarks/` using `pytest-benchmark`.
 - Post-0.1.0: breaking API changes require a minor bump (`0.2.0`) and a migration note in CHANGELOG.
 - **Git & CI Agent** (2026-06-17 added, replaces old release-agent):
   - Project-level Claude Code agent under `.claude/agents/git-ci-agent.md`
-  - Automates: commit staging/writing → push to remote → GitHub Actions CI monitoring → test report analysis
+  - Automates: commit staging/writing → push to remote → GitHub Actions CI monitoring (Monitor tool with 30s polling — tracks both `ci-pr` and `ci-main` until completion) → test report analysis
   - Requires: GitHub CLI (`gh`) authenticated, git remote configured
 
 ## Security Conventions

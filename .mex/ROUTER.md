@@ -24,7 +24,7 @@ edges:
     condition: when writing tests, designing coverage, or questioning whether something can be tested
   - target: patterns/INDEX.md
     condition: when starting a task — check the pattern index for a matching pattern file
-last_updated: 2026-06-17
+last_updated: 2026-06-17 (git-ci-agent Monitor approach updated)
 ---
 
 # Session Bootstrap
@@ -36,9 +36,10 @@ Then read this file fully before doing anything else in this session.
 ## Current Project State
 
 **Working:**
-- **Git & CI Agent created!** (2026-06-17). Project-level Claude Code agent for automated commit/push/CI-monitor workflows:
+- **Git & CI Agent updated!** (2026-06-17). Monitor-based CI tracking:
   - `.claude/agents/git-ci-agent.md` - Agent definition (replaces old release-agent)
-  - Features: commit management, push to remote, GitHub Actions CI monitoring, test report analysis
+  - Features: commit management, push to remote, GitHub Actions CI monitoring (Monitor tool with 30s polling — replaces broken `gh run watch` approach)
+  - Pattern: `.mex/patterns/git-ci-workflow.md`
 - **Phase 1 complete!** `v0.0.1` dev tag (2026-06-17).
   - F1–F10: register, list/info, tag rows, note rows, field search, tag search, combined search, delete, rename, overwrite.
   - 8-layer test suite (L1–L8) implemented and passing — 220 tests + 1M-row scale smoke.

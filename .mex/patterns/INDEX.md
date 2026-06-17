@@ -7,9 +7,10 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [add-sdk-method.md](add-sdk-method.md) | Adding a new method to the `Engine` or `Dataset` facade — the core repeatable structural task |
 | [debug-duckdb-scan.md](debug-duckdb-scan.md) | Diagnosing wrong results or errors in a DuckDB JSONL/Parquet scan — the main read-path failure boundary |
 | [register-dataset.md](register-dataset.md) | Registering a new dataset from JSONL files — the first end-to-end flow (scan → offsets → fields → file_stats → PostgreSQL) |
+| [git-ci-workflow.md](git-ci-workflow.md) | Committing, pushing, and monitoring CI with Monitor tool — the daily dev loop |
 | [release-a-version.md](release-a-version.md) | Cutting a release — version bump, git tag, CI monitoring, GitHub Release creation |
 
-## Phase-1 status (2026-06-17)
+## Phase-1 status (2026-06-17; git-ci-workflow pattern added 2026-06-17)
 
 All three patterns above were exercised end-to-end in Phase 1 and remain accurate. Phase-1 specifics that may surprise a reader:
 
