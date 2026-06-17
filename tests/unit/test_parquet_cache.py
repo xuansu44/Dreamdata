@@ -4,7 +4,6 @@ Tests:
 - _extract_single_field_path
 """
 
-from dreamdata.engine import FilterOp
 from dreamdata.parquet_cache import _extract_single_field_path
 from dreamdata.sdk import and_filter, eq_filter, or_filter, range_filter
 

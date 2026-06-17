@@ -11,8 +11,6 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from dreamdata.versioning.core import (
     _accumulate_min_max,
     _canonical_json_hash,
