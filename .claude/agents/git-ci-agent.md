@@ -124,10 +124,17 @@ done
 
 When Monitor completes (all workflows done):
 
-- Parse the final JSON state
-- Report the conclusion of each workflow (`success` / `failure` / `cancelled`) by name
-- If any failed, offer to inspect logs: `gh run view <run-id> --log-failed`
-- Present the full summary to the user
+1. **Parse the final JSON state**
+2. **Report the conclusion of each workflow** (`success` / `failure` / `cancelled`) by name
+3. **For any failed workflow, automatically fetch and analyze logs:**
+   - First, get the failed jobs: `gh run view <run-id> --json jobs`
+   - For each failed job, get the logs: `gh run view <run-id> --log-failed`
+   - Extract the relevant failure details (test failures, error messages, coverage shortfalls, etc.)
+4. **Present the full summary to the user**, including:
+   - Overall status (success/failure) per workflow
+   - Detailed failure reasons for any failed runs
+   - Key excerpts from the logs
+   - Next-step suggestions (fix the issue, adjust coverage threshold, etc.)
 
 ## Gotchas
 
