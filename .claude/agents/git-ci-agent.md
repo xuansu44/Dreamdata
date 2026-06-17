@@ -7,7 +7,7 @@ description: Automates commit → push → CI monitor → result reporting. Use 
 
 ## Context
 
-This agent handles the full commit-push-CI workflow. After pushing to `origin/main`, it uses the Monitor tool to track GitHub Actions workflow runs (`ci-pr` and `ci-main`) until completion, then reports the results.
+This agent handles the full commit-push-CI workflow. After pushing to `origin/main`, it uses the Monitor tool to dynamically discover and track *all* triggered GitHub Actions workflow runs until completion, then reports the results.
 
 **Prerequisites:** `gh` CLI authenticated, git remote configured.
 
@@ -33,15 +33,20 @@ git commit -m "..."
 git push origin main
 ```
 
-### 3. Wait for CI to appear
+### 3. Wait for CI to appear and discover runs
 
 After push, CI runs may take a few seconds to appear. Wait 15s, then query:
 
 ```bash
-gh run list --branch main --limit 5 --json databaseId,status,workflowName
+gh run list --branch main --limit 10 --json databaseId,status,workflowName,createdAt,headSha
 ```
 
-Look for `in_progress` runs that were just triggered (ignore older completed runs).
+Find runs that:
+- Were created *after* the push (compare `createdAt` timestamps)
+- Match the current branch's `headSha`
+- Are `in_progress` or `queued`
+
+Collect all matching `databaseId` and `workflowName` pairs — track *all* of them, regardless of their names.
 
 ### 4. Start Monitor
 
@@ -49,32 +54,63 @@ Use the Monitor tool with a polling script that checks every 30 seconds:
 
 ```bash
 #!/bin/bash
-CI_PR=<ci-pr-run-id>
-CI_MAIN=<ci-main-run-id>
-LAST_PR=""
-LAST_MAIN=""
+# JSON array of {id, name} pairs, e.g.: '[{"id":123,"name":"ci-pr"},{"id":456,"name":"ci-main"}]'
+TRACKED_RUNS='<json-array-of-runs>'
+LAST_OUTPUT=""
 
 while true; do
-  DATA=$(gh run list --branch main --limit 5 --json databaseId,status,conclusion,workflowName 2>/dev/null)
+  DATA=$(gh run list --branch main --limit 15 --json databaseId,status,conclusion,workflowName 2>/dev/null)
 
-  PR_STATUS=$(echo "$DATA" | python3 -c "import sys,json; runs=json.load(sys.stdin); print(next((r['status']+','+str(r.get('conclusion','')) for r in runs if r['databaseId']==$CI_PR), 'unknown'))" 2>/dev/null)
-  MAIN_STATUS=$(echo "$DATA" | python3 -c "import sys,json; runs=json.load(sys.stdin); print(next((r['status']+','+str(r.get('conclusion','')) for r in runs if r['databaseId']==$CI_MAIN), 'unknown'))" 2>/dev/null)
+  # Parse current state
+  CURRENT=$(echo "$DATA" | python3 -c "
+import sys, json
+tracked = $TRACKED_RUNS
+runs = json.load(sys.stdin)
+state = {}
+for t in tracked:
+    run = next((r for r in runs if r['databaseId'] == t['id']), None)
+    if run:
+        state[t['name']] = {
+            'status': run['status'],
+            'conclusion': run.get('conclusion', '')
+        }
+    else:
+        state[t['name']] = {'status': 'unknown', 'conclusion': ''}
+print(json.dumps(state))
+" 2>/dev/null)
 
-  if [ "$PR_STATUS" != "$LAST_PR" ] || [ "$MAIN_STATUS" != "$LAST_MAIN" ]; then
-    echo "[$(date +%H:%M:%S)] ci-pr: $PR_STATUS | ci-main: $MAIN_STATUS"
-    LAST_PR=$PR_STATUS
-    LAST_MAIN=$MAIN_STATUS
+  # Generate output line
+  OUTPUT_LINE=$(echo "$CURRENT" | python3 -c "
+import sys, json
+state = json.load(sys.stdin)
+parts = []
+for name, s in state.items():
+    status = s['status']
+    conc = s['conclusion']
+    if status == 'completed' and conc:
+        parts.append(f'{name}: {status}/{conc}')
+    else:
+        parts.append(f'{name}: {status}')
+print(' | '.join(parts))
+" 2>/dev/null)
+
+  # Print if changed
+  if [ "$OUTPUT_LINE" != "$LAST_OUTPUT" ]; then
+    echo "[$(date +%H:%M:%S)] $OUTPUT_LINE"
+    LAST_OUTPUT="$OUTPUT_LINE"
   fi
 
-  PR_DONE=$(echo "$PR_STATUS" | grep -c "^completed")
-  MAIN_DONE=$(echo "$MAIN_STATUS" | grep -c "^completed")
+  # Check if all done
+  ALL_DONE=$(echo "$CURRENT" | python3 -c "
+import sys, json
+state = json.load(sys.stdin)
+all_completed = all(s['status'] == 'completed' for s in state.values())
+print('1' if all_completed else '0')
+" 2>/dev/null)
 
-  if [ "$PR_DONE" -gt 0 ] && [ "$MAIN_DONE" -gt 0 ]; then
-    PR_CONCLUSION=$(echo "$PR_STATUS" | cut -d, -f2)
-    MAIN_CONCLUSION=$(echo "$MAIN_STATUS" | cut -d, -f2)
+  if [ "$ALL_DONE" = "1" ]; then
     echo "=== DONE ==="
-    echo "ci-pr: $PR_CONCLUSION"
-    echo "ci-main: $MAIN_CONCLUSION"
+    echo "$CURRENT"
     exit 0
   fi
 
@@ -86,25 +122,26 @@ done
 
 ### 5. Report Results
 
-When Monitor completes (both workflows done):
+When Monitor completes (all workflows done):
 
-- Report the conclusion of each workflow (`success` / `failure` / `cancelled`)
+- Parse the final JSON state
+- Report the conclusion of each workflow (`success` / `failure` / `cancelled`) by name
 - If any failed, offer to inspect logs: `gh run view <run-id> --log-failed`
 - Present the full summary to the user
 
 ## Gotchas
 
 - **CI runs don't appear immediately after push.** Always wait ~15s before querying for run IDs.
-- **Two workflows trigger per push** (`ci-pr` and `ci-main`). Both must be tracked.
-- **Do NOT use `gh run watch`** — it blocks on a single run and doesn't handle two workflows. Use the polling Monitor approach instead.
+- **Track *all* workflows that trigger**, not just specific names.
+- **Do NOT use `gh run watch`** — it blocks on a single run and doesn't handle multiple workflows. Use the polling Monitor approach instead.
 - **Monitor with `persistent: true`** — don't set a timeout that might expire before CI finishes.
 - **`conclusion` can be empty while `status` is `in_progress`**. Parse them separately.
-- If a workflow never appears after 60s, it may not have been triggered (e.g., branch protection rules). Report this to the user.
+- If no workflows appear after 60s, it may not have been triggered (e.g., branch protection rules). Report this to the user.
 
 ## Verify
 
 - [ ] Commit was created with the correct message format
 - [ ] Push succeeded (no rejected or failed push)
-- [ ] Both `ci-pr` and `ci-main` run IDs were found
-- [ ] Monitor reported final status for both workflows
+- [ ] All triggered workflows were discovered (no hardcoded names)
+- [ ] Monitor reported final status for all workflows
 - [ ] User was notified of results
