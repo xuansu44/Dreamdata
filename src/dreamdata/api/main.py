@@ -27,7 +27,7 @@ from dreamdata.auth.dependencies import init_auth_helpers
 app = FastAPI(
     title="Dreamdata API",
     description="A versioned management engine for LLM training data",
-    version="0.4.0",
+    version="0.5.0",
 )
 
 # Add CORS middleware
@@ -67,7 +67,7 @@ if static_path.exists():
 @app.get("/", response_model=HealthResponse, include_in_schema=False)
 async def root() -> HealthResponse:
     """Root endpoint - health check."""
-    return HealthResponse(status="ok", version="0.4.0")
+    return HealthResponse(status="ok", version="0.5.0")
 
 
 @app.get("/app", include_in_schema=False)
@@ -80,7 +80,7 @@ async def web_ui() -> FileResponse:
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     """Health check endpoint."""
-    return HealthResponse(status="ok", version="0.4.0")
+    return HealthResponse(status="ok", version="0.5.0")
 
 
 if __name__ == "__main__":
