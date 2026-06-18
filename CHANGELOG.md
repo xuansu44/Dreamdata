@@ -4,6 +4,25 @@ All notable changes to dreamdata are documented here. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-06-18
+
+### Added
+- **FastAPI REST API** (F27-F32)
+  - `/datasets` - List, get, create, delete, rename datasets
+  - `/datasets/{name}/versions` - Version management, async append/map/filter-map
+  - `/datasets/{name}/tags` and `/notes` - Tag and note management
+  - `/datasets/{name}/search` - Field, tag, and scan endpoints
+  - `/datasets/{name}/indexes` - Index management
+  - `/datasets/{name}/parquet-cache` - Parquet cache management
+- **API Key authentication** - `X-API-Key` and `X-User-ID` headers
+- **Web UI** (F33-F35) - Simple HTML/JS explorer at `/app`
+- **Pydantic models** for all API requests/responses
+- **API tests** - Unit and component tests for API
+
+### Changed
+- Added `fastapi`, `uvicorn`, `python-multipart` dependencies
+- Added `pytest-httpx` and `httpx` to dev dependencies
+
 ## [0.2.1] - 2026-06-18
 
 ### Changed

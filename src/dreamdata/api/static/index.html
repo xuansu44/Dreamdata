@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dreamdata - Dataset Explorer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.3rem;
+        }
+        header p {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+        .dataset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .dataset-card {
+            background: #f8f9fb;
+            border-radius: 8px;
+            padding: 1.2rem;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .dataset-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .dataset-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        .dataset-stats {
+            font-size: 0.85rem;
+            color: #666;
+            display: flex;
+            gap: 1rem;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        .row-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .row-table th, .row-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .row-table th {
+            background: #f8f9fb;
+            font-weight: 600;
+        }
+        .tag {
+            display: inline-block;
+            background: #e9d8fd;
+            color: #6b46c1;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-right: 0.3rem;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+        .config-panel {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .config-panel input {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            flex: 1;
+            max-width: 300px;
+        }
+        .nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .nav button {
+            background: none;
+            border: none;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: #666;
+            border-bottom: 2px solid transparent;
+        }
+        .nav button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Dreamdata</h1>
+        <p>Versioned management engine for LLM training data</p>
+    </header>
+    <div class="container">
+        <div class="card">
+            <div class="config-panel">
+                <label>API Key:</label>
+                <input type="text" id="api-key" placeholder="Enter API key (optional)">
+                <label>User ID:</label>
+                <input type="text" id="user-id" placeholder="Enter user ID (optional)">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="nav">
+                <button class="active" id="nav-datasets">Datasets</button>
+                <button id="nav-explore">Explore</button>
+                <button id="nav-search">Search</button>
+            </div>
+
+            <div id="datasets-view">
+                <h2>Datasets</h2>
+                <div id="datasets-grid" class="dataset-grid">
+                    <div class="empty-state">Loading datasets...</div>
+                </div>
+            </div>
+
+            <div id="explore-view" style="display: none;">
+                <h2>Dataset Explorer</h2>
+                <div id="explore-content">
+                    <div class="empty-state">Select a dataset first</div>
+                </div>
+            </div>
+
+            <div id="search-view" style="display: none;">
+                <h2>Search</h2>
+                <div id="search-content">
+                    <div class="empty-state">Select a dataset first</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDataset = null;
+
+        function getHeaders() {
+            const headers = {};
+            const apiKey = document.getElementById('api-key').value;
+            const userId = document.getElementById('user-id').value;
+            if (apiKey) headers['X-API-Key'] = apiKey;
+            if (userId) headers['X-User-ID'] = userId;
+            return headers;
+        }
+
+        async function loadDatasets() {
+            try {
+                const response = await fetch('/datasets', { headers: getHeaders() });
+                const data = await response.json();
+                const grid = document.getElementById('datasets-grid');
+
+                if (data.datasets.length === 0) {
+                    grid.innerHTML = '<div class="empty-state">No datasets yet</div>';
+                    return;
+                }
+
+                grid.innerHTML = data.datasets.map(ds => `
+                    <div class="dataset-card" onclick="selectDataset('${ds.name}')">
+                        <div class="dataset-name">${ds.name}</div>
+                        <div class="dataset-stats">
+                            <span>${ds.row_count} rows</span>
+                            <span>${ds.version_count} versions</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load datasets:', e);
+            }
+        }
+
+        function selectDataset(name) {
+            currentDataset = name;
+            showView('explore');
+            loadExploreView();
+        }
+
+        async function loadExploreView() {
+            if (!currentDataset) return;
+
+            try {
+                const [dsResponse, rowsResponse] = await Promise.all([
+                    fetch(`/datasets/${currentDataset}`, { headers: getHeaders() }),
+                    fetch(`/datasets/${currentDataset}/scan?limit=20`, { headers: getHeaders() }),
+                ]);
+
+                const ds = await dsResponse.json();
+                const rows = await rowsResponse.json();
+
+                const content = document.getElementById('explore-content');
+                content.innerHTML = `
+                    <h3>${ds.name}</h3>
+                    <p><strong>${ds.row_count}</strong> rows, <strong>${ds.version_count}</strong> versions</p>
+                    <table class="row-table">
+                        <thead>
+                            <tr>
+                                <th>Row #</th>
+                                <th>Data</th>
+                                <th>Tags</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.rows.map(row => `
+                                <tr>
+                                    <td>${row.row_idx}</td>
+                                    <td><code>${JSON.stringify(row.data).slice(0, 100)}${JSON.stringify(row.data).length > 100 ? '...' : ''}</code></td>
+                                    <td>${row.tags.map(t => `<span class="tag">${t}</span>`).join('')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (e) {
+                console.error('Failed to load dataset:', e);
+            }
+        }
+
+        function showView(viewName) {
+            document.querySelectorAll('#datasets-view, #explore-view, #search-view').forEach(el => {
+                el.style.display = 'none';
+            });
+            document.getElementById(`${viewName}-view`).style.display = 'block';
+
+            document.querySelectorAll('.nav button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`nav-${viewName}`).classList.add('active');
+        }
+
+        document.getElementById('nav-datasets').addEventListener('click', () => {
+            showView('datasets');
+            loadDatasets();
+        });
+        document.getElementById('nav-explore').addEventListener('click', () => {
+            showView('explore');
+            if (currentDataset) loadExploreView();
+        });
+        document.getElementById('nav-search').addEventListener('click', () => showView('search'));
+
+        loadDatasets();
+    </script>
+</body>
+</html>
