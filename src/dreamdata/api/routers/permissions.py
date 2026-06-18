@@ -14,7 +14,7 @@ from dreamdata.auth.models import (
     MessageResponse,
     UpdatePermissionRequest,
 )
-from dreamdata.auth.repository import AuthRepository, DatasetPermissionRow, UserRow
+from dreamdata.auth.repository import AuthRepository, UserRow
 from dreamdata.meta.repository import MetaRepository
 
 router = APIRouter(prefix="/permissions", tags=["permissions"])
@@ -61,7 +61,7 @@ async def list_dataset_permissions(
     auth_repo = AuthRepository(meta_conn)
     meta_repo = MetaRepository(meta_conn)
 
-    ds, v = check_dataset_owner(name, current_user, auth_repo, meta_repo)
+    ds, _ = check_dataset_owner(name, current_user, auth_repo, meta_repo)
 
     perms = auth_repo.get_user_permissions_for_dataset(ds.id)
 
@@ -95,7 +95,7 @@ async def grant_permission(
     auth_repo = AuthRepository(meta_conn)
     meta_repo = MetaRepository(meta_conn)
 
-    ds, v = check_dataset_owner(name, current_user, auth_repo, meta_repo)
+    ds, _ = check_dataset_owner(name, current_user, auth_repo, meta_repo)
 
     # Check if user exists
     user = auth_repo.get_user_by_id(request.user_id)
@@ -138,7 +138,7 @@ async def update_permission(
     auth_repo = AuthRepository(meta_conn)
     meta_repo = MetaRepository(meta_conn)
 
-    ds, v = check_dataset_owner(name, current_user, auth_repo, meta_repo)
+    ds, _ = check_dataset_owner(name, current_user, auth_repo, meta_repo)
 
     perm = auth_repo.update_permission_level(
         dataset_id=ds.id,
@@ -178,7 +178,7 @@ async def revoke_permission(
     auth_repo = AuthRepository(meta_conn)
     meta_repo = MetaRepository(meta_conn)
 
-    ds, v = check_dataset_owner(name, current_user, auth_repo, meta_repo)
+    ds, _ = check_dataset_owner(name, current_user, auth_repo, meta_repo)
 
     revoked = auth_repo.revoke_permission(ds.id, user_id)
     if not revoked:

@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
-
 
 # Permission level type
 PermissionLevel = Literal["owner", "read_write", "read_only"]
@@ -192,7 +191,7 @@ class LoginResponse(BaseModel):
     """Response from successful login."""
 
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105
     expires_in: int
     refresh_token: str
     user: User
@@ -202,7 +201,7 @@ class TokenRefreshResponse(BaseModel):
     """Response from token refresh."""
 
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105
     expires_in: int
 
 
@@ -212,8 +211,8 @@ class MessageResponse(BaseModel):
     message: str
 
 
-class ListResponse[T](BaseModel):
+class ListResponse(BaseModel):
     """Generic list response."""
 
-    items: list[T]
+    items: list[Any]
     total: int

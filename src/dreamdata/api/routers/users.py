@@ -2,12 +2,10 @@
 User management endpoints (admin only).
 """
 
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from dreamdata.api.dependencies import get_meta_conn_for_api, get_settings_for_api
-from dreamdata.auth.core import PasswordHelper
 from dreamdata.auth.dependencies import (
     get_current_user,
     get_password_helper,

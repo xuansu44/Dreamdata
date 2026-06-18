@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from psycopg import sql
 
 from dreamdata.errors import MetadataWriteFailed
 from dreamdata.meta.connection import MetaConnection
-
 
 UserRole = Literal["admin", "user"]
 PermissionLevel = Literal["owner", "read_write", "read_only"]
@@ -98,7 +97,7 @@ class AuthRepository:
         username: str,
         email: str,
         hashed_password: bytes,
-        salt: bytes,
+        salt: bytes,  # noqa: ARG002
         role: UserRole,
     ) -> UserRow:
         """Create a new user."""
@@ -190,7 +189,7 @@ class AuthRepository:
         )
 
     def update_user_password(
-        self, *, user_id: int, hashed_password: bytes, salt: bytes
+        self, *, user_id: int, hashed_password: bytes, salt: bytes  # noqa: ARG002
     ) -> None:
         """Update a user's password."""
         with self._conn.transaction() as conn, conn.cursor() as cur:

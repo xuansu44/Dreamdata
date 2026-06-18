@@ -7,7 +7,7 @@ import hashlib
 import os
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import Any
 
 from jose import JWTError, jwt
 

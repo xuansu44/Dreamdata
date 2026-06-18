@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, UTC
-from typing import Annotated, Any, Literal
+from datetime import UTC, datetime
+from typing import Any, Literal
 
-from fastapi import Depends, HTTPException, status, Header
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from dreamdata.auth.core import APIKeyHelper, PasswordHelper, TokenHelper
+from dreamdata.auth.repository import AuthRepository, UserRow
 from dreamdata.config import Settings
 from dreamdata.meta.connection import MetaConnection
 from dreamdata.meta.repository import MetaRepository
-from dreamdata.auth.core import APIKeyHelper, PasswordHelper, TokenHelper
-from dreamdata.auth.repository import AuthRepository, UserRow
-
 
 # Permission level type
 PermissionLevel = Literal["owner", "read_write", "read_only"]
@@ -100,7 +99,7 @@ async def get_current_user(
         token_helper = get_token_helper()
         result = token_helper.verify_access_token(token)
         if result:
-            user_id, username, role = result
+            user_id, _, _ = result
             user = auth_repo.get_user_by_id(user_id)
             if user and user.is_active:
                 auth_repo.update_last_login(user_id)
@@ -110,7 +109,7 @@ async def get_current_user(
     if x_api_key:
         api_key_helper = get_api_key_helper()
         if api_key_helper.is_valid_api_key_format(x_api_key):
-            key_prefix, key_hash = api_key_helper.hash_api_key(x_api_key)
+            key_prefix, _ = api_key_helper.hash_api_key(x_api_key)
             candidates = auth_repo.get_api_key_by_prefix(key_prefix)
             for candidate in candidates:
                 if not candidate.is_active:
@@ -173,7 +172,6 @@ async def require_dataset_permission(
     Returns (dataset_meta, version_meta, permission_level).
     """
     from dreamdata.api.dependencies import get_meta_conn_for_api
-    from dreamdata.meta.repository import MetaRepository
     from dreamdata.auth.repository import AuthRepository
 
     meta_conn = get_meta_conn_for_api()

@@ -2,13 +2,11 @@
 Authentication endpoints - initial setup, login, password change, API keys.
 """
 
-from datetime import datetime, timedelta, UTC
-from typing import Annotated
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from dreamdata.api.dependencies import get_meta_conn_for_api, get_settings_for_api
-from dreamdata.auth.core import APIKeyHelper, PasswordHelper, TokenHelper
 from dreamdata.auth.dependencies import (
     get_api_key_helper,
     get_current_user,
@@ -126,7 +124,7 @@ async def login(request: LoginRequest) -> LoginResponse:
 
     return LoginResponse(
         access_token=access_token,
-        token_type="bearer",
+        token_type="bearer",  # noqa: S106
         expires_in=token_helper.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         refresh_token=refresh_token,
         user=User(
