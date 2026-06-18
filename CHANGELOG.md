@@ -4,6 +4,17 @@ All notable changes to dreamdata are documented here. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-06-18
+
+### Changed
+- Enhanced `local-test-agent` with semantic docs checks and tech debt detection
+- Improved `scripts/run_local_tests.py` to use tomllib instead of tomlkit
+- Added `planning-release.md` pattern for release planning workflow
+- Updated ROUTER.md with v0.3.0 (Phase 5) plan
+
+### Fixed
+- Fixed version consistency check in local test runner
+
 ## [0.1.0] - 2026-06-17
 
 First public stable release with SemVer stability guarantee. Includes

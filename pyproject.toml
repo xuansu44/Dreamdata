@@ -7,7 +7,7 @@ pyarrow = ["setuptools", "wheel"]
 
 [project]
 name = "dreamdata"
-version = "0.2.0"
+version = "0.2.1"
 description = "A versioned management engine for LLM training data — JSONL-native storage with multi-user tag isolation, flexible retrieval, functional transforms, and dataset versioning."
 readme = "README.md"
 requires-python = ">=3.11"
