@@ -78,6 +78,45 @@ class Settings(BaseSettings):
 
     log_level: str = Field(default="INFO", description="Root log level.")
 
+    # Auth settings (v0.4.0+)
+    jwt_secret_key: SecretStr = Field(
+        default="dev-secret-key-change-in-production",
+        description="Secret key for JWT token signing. Set to a strong random value in production.",
+    )
+    jwt_algorithm: str = Field(
+        default="HS256",
+        description="Algorithm for JWT signing.",
+    )
+    jwt_access_token_expire_minutes: int = Field(
+        default=30,
+        description="JWT access token expiration in minutes.",
+        ge=1,
+        le=1440,
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        default=7,
+        description="JWT refresh token expiration in days.",
+        ge=1,
+        le=365,
+    )
+
+    # Argon2 parameters
+    argon2_time_cost: int = Field(
+        default=3,
+        description="Argon2 time cost (iterations).",
+        ge=1,
+    )
+    argon2_memory_cost: int = Field(
+        default=65536,
+        description="Argon2 memory cost in KB.",
+        ge=8192,
+    )
+    argon2_parallelism: int = Field(
+        default=4,
+        description="Argon2 parallelism (threads).",
+        ge=1,
+    )
+
     @field_validator("workspace_path")
     @classmethod
     def _workspace_must_be_absolute(cls, v: Path) -> Path:

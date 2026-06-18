@@ -24,7 +24,7 @@ edges:
     condition: when writing tests, designing coverage, or questioning whether something can be tested
   - target: patterns/INDEX.md
     condition: when starting a task — check the pattern index for a matching pattern file
-last_updated: 2026-06-18 (v0.3.0 complete! REST API + Web UI shipped! All tests passing, CI green!)
+last_updated: 2026-06-18 (v0.4.0 planning in progress - User Auth & Permissions)
 ---
 
 # Session Bootstrap
@@ -282,4 +282,138 @@ For every task, follow this loop:
 - Audit log UI
 - Real-time WebSocket updates
 - Multi-node deployment / Kubernetes
+
+---
+
+## v0.4.0 Planning (Phase 6: User Auth & Permissions)
+
+**Scope**: Phase 6 (User Authentication & Fine-grained Permissions)
+**Status**: PM Approved (2026-06-18), Implementation Deferred
+**Reference**: See `V040_IMPLEMENTATION_PLAN.md` for full details
+
+### User Stories (PM Review Required)
+
+| ID | User Story | Priority |
+|----|-----------|---------|
+| US-001 | As a system administrator, I want to create an initial admin account on first setup so that I can start managing the system. | P0 |
+| US-002 | As an admin, I want to create new user accounts so that my team can collaborate. | P0 |
+| US-003 | As an admin or dataset owner, I want to assign dataset permissions to users so that I can control who can access what. | P0 |
+| US-004 | As an admin, I want to view all datasets and users so that I can monitor the system. | P0 |
+| US-005 | As a user, I want to log in with username/password so that I can access the system securely. | P0 |
+| US-006 | As a user, I want to access datasets I have permissions for so that I can do my work. | P0 |
+| US-007 | As a user, I want to create datasets (with admins as co-owners) so that I can manage my data. | P0 |
+| US-008 | As a user, I want to change my password so that I can keep my account secure. | P1 |
+| US-010 | As a user, I want to see my permission levels visualized in the UI so that I understand what I can do. | P1 |
+| US-011 | As an admin, I want to optionally assign initial permissions when creating a user so that setup is faster. | P1 |
+
+### Features (F36-F50)
+
+| Feature | Description |
+|---------|-------------|
+| **F36** | User table & auth schema (users, api_keys, dataset_permissions) |
+| **F37** | Password hashing (Argon2id) & JWT token generation |
+| **F38** | Initial setup endpoint (`POST /auth/setup`) |
+| **F39** | Login/logout endpoints with JWT refresh tokens |
+| **F40** | API key management (create, list, revoke) |
+| **F41** | User management endpoints (CRUD) |
+| **F42** | Dataset permission endpoints (grant, revoke, update) |
+| **F43** | Permission middleware & dependency injection |
+| **F44** | Backward compatibility layer for old API keys |
+| **F45** | All existing endpoints enforce permissions |
+| **F46** | Web UI: Login page |
+| **F47** | Web UI: User management (admin) |
+| **F48** | Web UI: Permission management |
+| **F49** | Web UI: User settings (change password, API keys) |
+| **F50** | Permission level visualization in UI |
+
+### Permission Levels
+
+| Level | Description |
+|------|-------------|
+| `admin` | System administrator: full access to everything |
+| `owner` | Dataset owner: full access to the dataset, can assign permissions |
+| `read_write` | Read-write access: view, modify, tag, append, transform |
+| `read_only` | Read-only access: view, search, export |
+
+### Database Changes
+
+New tables:
+- `users` - user accounts
+- `api_keys` - persistent API keys
+- `dataset_permissions` - fine-grained dataset ACL
+- `password_reset_tokens` - password reset support
+
+Alembic migration: `0004_users_permissions.py`
+
+### API Endpoints
+
+**Auth** (`/auth`):
+- `POST /auth/setup` - initial admin setup
+- `POST /auth/login` - user login
+- `POST /auth/logout` - user logout
+- `POST /auth/change-password` - change password
+- `POST /auth/api-keys` - create API key
+- `GET /auth/api-keys` - list API keys
+- `DELETE /auth/api-keys/:id` - revoke API key
+
+**Users** (`/users`):
+- `GET /users` - list users (admin)
+- `POST /users` - create user (admin)
+- `GET /users/:id` - get user (admin or self)
+- `PATCH /users/:id` - update user (admin or self)
+- `DELETE /users/:id` - delete user (admin)
+- `GET /users/me` - get current user
+
+**Permissions** (`/permissions`):
+- `GET /permissions/datasets/:name` - get dataset permissions
+- `POST /permissions/datasets/:name` - grant permission
+- `PATCH /permissions/datasets/:name/users/:id` - update permission
+- `DELETE /permissions/datasets/:name/users/:id` - revoke permission
+- `GET /permissions/me/datasets` - get my datasets with permissions
+
+### Backward Compatibility
+
+- Old `X-API-Key` + `X-User-ID` headers continue to work (mapped to "anonymous" user)
+- Existing datasets default to admin-only access
+- Legacy string `user_id` in `user_annotations` preserved
+
+### Test Strategy
+
+- L1: Password hashing, token generation, permission logic
+- L2: AuthRepository unit tests
+- L3: API integration tests with permission flows
+- L4: Permission matrix validation
+- L5: Security tests (privilege escalation, SQL injection)
+- L6: Concurrent permission changes
+- L7: Mutation testing for auth logic
+- L8: E2E: Setup admin → create user → create dataset → assign permission → verify access
+
+### Non-Negotiables
+
+- Passwords stored with Argon2id, never plaintext
+- JWT tokens short-lived (30 mins) with refresh tokens
+- API keys revocable at any time
+- All dataset endpoints enforce permissions
+- Admin bypasses all permission checks
+- Audit trail for permission changes (DB-level)
+
+### Out of Scope (Deferred to v0.4.1+)
+
+- OAuth2/SSO integration
+- Audit log UI
+- Temporary/expiring permissions
+- Fine-grained per-action permissions (e.g., tag-only, export-only)
+- Permission templates/roles
+- WebSocket real-time updates
+
+### Environment Variables (New)
+
+```bash
+JWT_SECRET_KEY=               # Required for JWT signing
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
+ARGON2_TIME_COST=3
+ARGON2_MEMORY_COST=65536
+ARGON2_PARALLELISM=4
+```
 

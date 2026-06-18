@@ -9,20 +9,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from dreamdata.api.dependencies import get_settings_for_api
 from dreamdata.api.models import HealthResponse
 from dreamdata.api.routers import (
     annotations,
+    auth,
     datasets,
     indexes,
     parquet,
+    permissions,
     search,
+    users,
     versions,
 )
+from dreamdata.auth.dependencies import init_auth_helpers
 
 app = FastAPI(
     title="Dreamdata API",
     description="A versioned management engine for LLM training data",
-    version="0.3.0",
+    version="0.4.0",
 )
 
 # Add CORS middleware
@@ -34,6 +39,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Initialize auth helpers on startup."""
+    settings = get_settings_for_api()
+    init_auth_helpers(settings)
+
+
 # Include routers
 app.include_router(datasets.router)
 app.include_router(versions.router)
@@ -41,6 +54,9 @@ app.include_router(annotations.router)
 app.include_router(search.router)
 app.include_router(indexes.router)
 app.include_router(parquet.router)
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(permissions.router)
 
 # Mount static files for Web UI
 static_path = Path(__file__).parent / "static"
@@ -51,7 +67,7 @@ if static_path.exists():
 @app.get("/", response_model=HealthResponse, include_in_schema=False)
 async def root() -> HealthResponse:
     """Root endpoint - health check."""
-    return HealthResponse(status="ok", version="0.3.0")
+    return HealthResponse(status="ok", version="0.4.0")
 
 
 @app.get("/app", include_in_schema=False)
@@ -64,7 +80,7 @@ async def web_ui() -> FileResponse:
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     """Health check endpoint."""
-    return HealthResponse(status="ok", version="0.3.0")
+    return HealthResponse(status="ok", version="0.4.0")
 
 
 if __name__ == "__main__":
