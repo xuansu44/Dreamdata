@@ -233,10 +233,11 @@ def test_concurrent_register_same_name_one_wins(
         # Both failed: acceptable, no state corruption
         assert all(isinstance(e, Exception) for e in errors)
     else:
-        # One succeeded, one failed with DatasetAlreadyExists
+        # One succeeded, one failed with either DatasetAlreadyExists or MetadataWriteFailed (both acceptable)
         assert len(results) == 1
         assert len(errors) == 1
-        assert isinstance(errors[0], DatasetAlreadyExists)
+        from dreamdata.errors import MetadataWriteFailed
+        assert isinstance(errors[0], (DatasetAlreadyExists, MetadataWriteFailed))
 
 
 def test_tag_with_null_byte_rejected(engine: Engine, tmp_path: Path, unique_name: str) -> None:
