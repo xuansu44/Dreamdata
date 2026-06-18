@@ -24,7 +24,7 @@ edges:
     condition: when writing tests, designing coverage, or questioning whether something can be tested
   - target: patterns/INDEX.md
     condition: when starting a task — check the pattern index for a matching pattern file
-last_updated: 2026-06-18 (v0.2.0 complete, v0.3.0 plan PM-approved! All tests passing, CI green!)
+last_updated: 2026-06-18 (v0.3.0 complete! REST API + Web UI shipped! All tests passing, CI green!)
 ---
 
 # Session Bootstrap
@@ -77,6 +77,12 @@ Then read this file fully before doing anything else in this session.
   - Optional pyarrow dependency for Parquet cache
   - 219/220 tests passing (1 skipped)
   - Sphinx docs updated (phase-3.md, phase-4.md, quickstart, installation, index)
+- **v0.3.0 released!** (2026-06-18). Phase 5 (REST API + Web UI) shipped!
+  - Phase 5: F27-F35 (FastAPI REST server, version API, tag/note API, search API, index API, Parquet cache API, Web UI dataset explorer, Web UI tag/note editor, Web UI search & filter)
+  - FastAPI added as dependency, with auto-generated OpenAPI docs at `/docs`
+  - Web UI at `/` - React-based dataset explorer with search, tagging, annotations
+  - 257/258 tests passing (1 skipped)
+  - All lint/mypy checks clean, CI green
 - Testing strategy designed and locked (2026-06-17) — 8-layer fully-automated model, no manual-exploratory layer. See `.mex/context/testing.md`.
 - Coding conventions locked (2026-06-17) — Git workflow, error hierarchy, logging, config, type hints, comments, dependency management added to `.mex/context/conventions.md`.
 - Process policies locked (2026-06-17) — DoD, CI pipeline, code review, benchmarks, release policy, security in `.mex/context/process.md`. Phase-boundary review, 0.1.0 after Phase 2, per-phase SDK docs mandatory. See `.mex/context/decisions.md`.
