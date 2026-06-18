@@ -34,7 +34,13 @@ def init_auth_helpers(settings: Settings) -> None:
     global _token_helper, _password_helper, _api_key_helper, _settings
     _settings = settings
     secret_key = getattr(settings, "jwt_secret_key", "dev-secret-key-change-in-production")
-    _token_helper = TokenHelper(str(secret_key))
+    if hasattr(secret_key, "get_secret_value"):
+        # It's a SecretStr
+        secret_str = secret_key.get_secret_value()
+    else:
+        # Fallback for older versions or testing
+        secret_str = str(secret_key)
+    _token_helper = TokenHelper(secret_str)
     _password_helper = PasswordHelper()
     _api_key_helper = APIKeyHelper()
 

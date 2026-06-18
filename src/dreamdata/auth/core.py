@@ -9,12 +9,12 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from jose import JWTError, jwt
+from jose import JWTError, jwt  # type: ignore[import-untyped]
 
 # Argon2 is optional - if not available, fall back to bcrypt or PBKDF2
 try:
-    import argon2
-    from argon2.exceptions import VerifyMismatchError
+    import argon2  # type: ignore[import-not-found]
+    from argon2.exceptions import VerifyMismatchError  # type: ignore[import-not-found]
 
     _HAS_ARGON2 = True
 except ImportError:
@@ -134,7 +134,7 @@ class TokenHelper:
             "exp": expire,
             "iat": datetime.now(UTC),
         }
-        return jwt.encode(to_encode, self._secret_key, algorithm=self.ALGORITHM)
+        return jwt.encode(to_encode, self._secret_key, algorithm=self.ALGORITHM)  # type: ignore[no-any-return]
 
     def create_refresh_token(self, *, user_id: int) -> str:
         """Create a long-lived refresh token."""
@@ -145,13 +145,13 @@ class TokenHelper:
             "exp": expire,
             "iat": datetime.now(UTC),
         }
-        return jwt.encode(to_encode, self._secret_key, algorithm=self.ALGORITHM)
+        return jwt.encode(to_encode, self._secret_key, algorithm=self.ALGORITHM)  # type: ignore[no-any-return]
 
     def verify_token(self, token: str) -> dict[str, Any] | None:
         """Verify a token and return its payload, or None if invalid."""
         try:
             payload = jwt.decode(token, self._secret_key, algorithms=[self.ALGORITHM])
-            return payload
+            return payload  # type: ignore[no-any-return]
         except JWTError:
             return None
 

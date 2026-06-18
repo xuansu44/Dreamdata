@@ -80,7 +80,7 @@ class Settings(BaseSettings):
 
     # Auth settings (v0.4.0+)
     jwt_secret_key: SecretStr = Field(
-        default="dev-secret-key-change-in-production",
+        default=SecretStr("dev-secret-key-change-in-production"),
         description="Secret key for JWT token signing. Set to a strong random value in production.",
     )
     jwt_algorithm: str = Field(
