@@ -237,6 +237,7 @@ def test_concurrent_register_same_name_one_wins(
         assert len(results) == 1
         assert len(errors) == 1
         from dreamdata.errors import MetadataWriteFailed
+
         assert isinstance(errors[0], (DatasetAlreadyExists, MetadataWriteFailed))
 
 
