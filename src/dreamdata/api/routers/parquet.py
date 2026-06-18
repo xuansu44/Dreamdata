@@ -3,7 +3,6 @@ Parquet cache API endpoints.
 """
 
 from datetime import datetime
-from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 

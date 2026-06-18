@@ -4,6 +4,7 @@ API dependencies - authentication, engine access.
 
 import os
 from pathlib import Path
+from typing import Any
 
 from fastapi import Depends, Header
 
@@ -63,7 +64,3 @@ def get_user_id(
         return x_user_id
     # If no user_id provided, use API key as user_id
     return api_key
-
-
-# Add Any import
-from typing import Any

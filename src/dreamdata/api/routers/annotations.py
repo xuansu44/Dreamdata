@@ -3,6 +3,7 @@ Tag and note API endpoints.
 """
 
 from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from dreamdata.api.dependencies import get_engine, get_user_id
@@ -94,7 +95,7 @@ def list_notes(
         notes_list = dataset.notes(user_id=user_id)
         notes = []
         now = datetime.now()
-        for note_id, row_idx, body in notes_list:
+        for _note_id, row_idx, body in notes_list:
             notes.append(
                 NoteResponse(
                     row_idx=row_idx,
