@@ -74,7 +74,10 @@ def upgrade() -> None:
     op.create_index("api_keys_user_id_idx", "api_keys", ["user_id"])
     op.create_index("api_keys_key_prefix_idx", "api_keys", ["key_prefix"])
     op.create_index(
-        "api_keys_active_idx", "api_keys", ["user_id", "is_active"], postgresql_where=sa.text("is_active")
+        "api_keys_active_idx",
+        "api_keys",
+        ["user_id", "is_active"],
+        postgresql_where=sa.text("is_active"),
     )
 
     # Dataset permissions table

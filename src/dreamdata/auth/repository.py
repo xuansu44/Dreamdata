@@ -129,9 +129,7 @@ class AuthRepository:
         """Get a user by username."""
         if not self._ensure_table_exists("users"):
             return None
-        row = self._conn.fetchone(
-            sql.SQL("SELECT * FROM users WHERE username = %s"), (username,)
-        )
+        row = self._conn.fetchone(sql.SQL("SELECT * FROM users WHERE username = %s"), (username,))
         if row is None:
             return None
         return UserRow(
@@ -150,9 +148,7 @@ class AuthRepository:
         """Get a user by email."""
         if not self._ensure_table_exists("users"):
             return None
-        row = self._conn.fetchone(
-            sql.SQL("SELECT * FROM users WHERE email = %s"), (email,)
-        )
+        row = self._conn.fetchone(sql.SQL("SELECT * FROM users WHERE email = %s"), (email,))
         if row is None:
             return None
         return UserRow(
@@ -171,9 +167,7 @@ class AuthRepository:
         """Get a user by ID."""
         if not self._ensure_table_exists("users"):
             return None
-        row = self._conn.fetchone(
-            sql.SQL("SELECT * FROM users WHERE id = %s"), (user_id,)
-        )
+        row = self._conn.fetchone(sql.SQL("SELECT * FROM users WHERE id = %s"), (user_id,))
         if row is None:
             return None
         return UserRow(
@@ -189,14 +183,16 @@ class AuthRepository:
         )
 
     def update_user_password(
-        self, *, user_id: int, hashed_password: bytes, salt: bytes  # noqa: ARG002
+        self,
+        *,
+        user_id: int,
+        hashed_password: bytes,
+        salt: bytes,  # noqa: ARG002
     ) -> None:
         """Update a user's password."""
         with self._conn.transaction() as conn, conn.cursor() as cur:
             cur.execute(
-                sql.SQL(
-                    "UPDATE users SET hashed_password = %s, updated_at = now() WHERE id = %s"
-                ),
+                sql.SQL("UPDATE users SET hashed_password = %s, updated_at = now() WHERE id = %s"),
                 (hashed_password, user_id),
             )
 
@@ -238,9 +234,9 @@ class AuthRepository:
         params.append(user_id)
 
         with self._conn.transaction() as conn, conn.cursor() as cur:
-            query = sql.SQL(
-                "UPDATE users SET {} WHERE id = %s RETURNING *"
-            ).format(sql.SQL(", ").join(sql.SQL(u) for u in updates))
+            query = sql.SQL("UPDATE users SET {} WHERE id = %s RETURNING *").format(
+                sql.SQL(", ").join(sql.SQL(u) for u in updates)
+            )
             cur.execute(query, tuple(params))
             row = cur.fetchone()
 
@@ -262,9 +258,7 @@ class AuthRepository:
         """List all users."""
         if not self._ensure_table_exists("users"):
             return []
-        rows = self._conn.fetchall(
-            sql.SQL("SELECT * FROM users ORDER BY username")
-        )
+        rows = self._conn.fetchall(sql.SQL("SELECT * FROM users ORDER BY username"))
         return [
             UserRow(
                 id=r["id"],
@@ -381,9 +375,7 @@ class AuthRepository:
         """Revoke an API key. Returns True if a key was revoked."""
         with self._conn.transaction() as conn, conn.cursor() as cur:
             cur.execute(
-                sql.SQL(
-                    "UPDATE api_keys SET is_active = false WHERE id = %s AND user_id = %s"
-                ),
+                sql.SQL("UPDATE api_keys SET is_active = false WHERE id = %s AND user_id = %s"),
                 (api_key_id, user_id),
             )
             return cur.rowcount > 0
@@ -399,16 +391,12 @@ class AuthRepository:
     # Permission operations
     # ============================================
 
-    def get_dataset_permission(
-        self, dataset_id: int, user_id: int
-    ) -> DatasetPermissionRow | None:
+    def get_dataset_permission(self, dataset_id: int, user_id: int) -> DatasetPermissionRow | None:
         """Get a user's permission for a dataset."""
         if not self._ensure_table_exists("dataset_permissions"):
             return None
         row = self._conn.fetchone(
-            sql.SQL(
-                "SELECT * FROM dataset_permissions WHERE dataset_id = %s AND user_id = %s"
-            ),
+            sql.SQL("SELECT * FROM dataset_permissions WHERE dataset_id = %s AND user_id = %s"),
             (dataset_id, user_id),
         )
         if row is None:
@@ -423,9 +411,7 @@ class AuthRepository:
             expires_at=row["expires_at"],
         )
 
-    def get_user_permissions_for_dataset(
-        self, dataset_id: int
-    ) -> list[DatasetPermissionRow]:
+    def get_user_permissions_for_dataset(self, dataset_id: int) -> list[DatasetPermissionRow]:
         """Get all permissions for a dataset."""
         if not self._ensure_table_exists("dataset_permissions"):
             return []
@@ -448,9 +434,7 @@ class AuthRepository:
             for r in rows
         ]
 
-    def get_datasets_for_user(
-        self, user_id: int
-    ) -> list[tuple[int, int, str]]:
+    def get_datasets_for_user(self, user_id: int) -> list[tuple[int, int, str]]:
         """Get all datasets a user has access to. Returns list of (dataset_id, dataset_version_id, permission_level)."""
         if not self._ensure_table_exists("dataset_permissions"):
             return []
@@ -465,7 +449,11 @@ class AuthRepository:
             (user_id,),
         )
         return [
-            (int(r["dataset_id"]), int(r["current_version_id"]) if r["current_version_id"] is not None else -1, r["permission_level"])
+            (
+                int(r["dataset_id"]),
+                int(r["current_version_id"]) if r["current_version_id"] is not None else -1,
+                r["permission_level"],
+            )
             for r in rows
         ]
 
@@ -498,7 +486,9 @@ class AuthRepository:
             row = cur.fetchone()
 
         if row is None:
-            raise MetadataWriteFailed(table="dataset_permissions", reason="INSERT/UPDATE did not return a row")
+            raise MetadataWriteFailed(
+                table="dataset_permissions", reason="INSERT/UPDATE did not return a row"
+            )
         return DatasetPermissionRow(
             id=row["id"],
             dataset_id=row["dataset_id"],
@@ -513,9 +503,7 @@ class AuthRepository:
         """Revoke a user's permission for a dataset. Returns True if revoked."""
         with self._conn.transaction() as conn, conn.cursor() as cur:
             cur.execute(
-                sql.SQL(
-                    "DELETE FROM dataset_permissions WHERE dataset_id = %s AND user_id = %s"
-                ),
+                sql.SQL("DELETE FROM dataset_permissions WHERE dataset_id = %s AND user_id = %s"),
                 (dataset_id, user_id),
             )
             return cur.rowcount > 0
@@ -596,9 +584,7 @@ class AuthRepository:
     def truncate_all(self) -> None:
         """Truncate all auth tables (for testing)."""
         with self._conn.transaction() as conn, conn.cursor() as cur:
-            cur.execute(
-                sql.SQL("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
-            )
+            cur.execute(sql.SQL("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
             existing = {row["tablename"] for row in cur.fetchall()}
             tables = []
             for t in [

@@ -215,7 +215,7 @@ class APIKeyHelper:
         if not api_key.startswith(self.KEY_PREFIX):
             return False
         # Should be prefix + base64 (no padding)
-        key_part = api_key[len(self.KEY_PREFIX):]
+        key_part = api_key[len(self.KEY_PREFIX) :]
         try:
             # Try to decode to verify it's valid base64
             # Note: we don't care about the result, just that it's valid

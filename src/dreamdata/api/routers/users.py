@@ -2,7 +2,6 @@
 User management endpoints (admin only).
 """
 
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from dreamdata.api.dependencies import get_meta_conn_for_api, get_settings_for_api
