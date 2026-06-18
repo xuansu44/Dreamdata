@@ -24,7 +24,7 @@ edges:
     condition: when writing tests, designing coverage, or questioning whether something can be tested
   - target: patterns/INDEX.md
     condition: when starting a task — check the pattern index for a matching pattern file
-last_updated: 2026-06-17 (Phase 3/4 complete, coverage at 77%! All tests passing, CI green!)
+last_updated: 2026-06-18 (v0.2.0 complete, v0.3.0 plan PM-approved! All tests passing, CI green!)
 ---
 
 # Session Bootstrap
@@ -39,7 +39,14 @@ Then read this file fully before doing anything else in this session.
 - **Git & CI Agent updated!** (2026-06-17). Monitor-based CI tracking:
   - `.claude/agents/git-ci-agent.md` - Agent definition (replaces old release-agent)
   - Features: commit management, push to remote, GitHub Actions CI monitoring (Monitor tool with 30s polling — replaces broken `gh run watch` approach)
-  - Pattern: `.mex/patterns/git-ci-workflow.md`
+  - Pattern: `.mex/patterns/git-ci-workflow.md
+- **Local Test Agent enhanced!** (2026-06-18). Comprehensive local testing with semantic docs checks:
+  - `.claude/agents/local-test-agent.md` - Full agent definition
+  - `scripts/run_local_tests.py` - Enhanced runner with:
+    - Semantic docs checks: version consistency, SDK API consistency, library usage consistency, feature consistency
+    - Tech debt detection: TODO/FIXME, unused imports, complex functions
+    - 8-layer test support, bilingual docs build check
+  - Pattern: `.mex/patterns/local-testing.md`
 - **Phase 1 complete!** `v0.0.1` dev tag (2026-06-17).
   - F1–F10: register, list/info, tag rows, note rows, field search, tag search, combined search, delete, rename, overwrite.
   - 8-layer test suite (L1–L8) implemented and passing — 220 tests + 1M-row scale smoke.
@@ -176,3 +183,97 @@ For every task, follow this loop:
    - **Record:** If project state changed, update the "Current Project State" section above. If documented facts changed, update the relevant `.mex/context/` file surgically.
    - **Orient:** If this task can recur and no pattern exists, create one in `patterns/` using `patterns/README.md`, then add it to `patterns/INDEX.md`. If a pattern exists but you learned a gotcha, update it.
    - **Write:** Bump `last_updated` in every scaffold file you changed. If the why matters, run `mex log --type decision "<what changed and why>"` or `mex log "<note>"`.
+
+---
+
+## v0.3.0 Planning (Phase 5: FastAPI REST + Web UI)
+
+**Scope:** Phase 5 (REST API + Web UI)
+**Status:** PM Approved (2026-06-18)
+
+### User Stories (PM Approved)
+1. **Remote access:** As a data scientist, I want to access dreamdata via REST API from a notebook or script running on a different machine so that I don't need a full local install.
+2. **Web UI for exploration:** As a data scientist, I want a web UI to browse datasets, view rows, add tags/notes, and run searches without writing Python.
+3. **AuthN/Z:** As an admin, I want API key auth + user ID enforcement to keep the system secure.
+4. **Async operations:** As a data engineer, I want long-running ops (map/filter_map, Parquet cache refresh) to run as async background jobs so I don't have to wait.
+5. **API docs:** As a data scientist, I want auto-generated OpenAPI docs so I can understand the API without reading source code.
+
+### Features (F27–F35) (PM Approved)
+- **F27:** FastAPI REST server wrapping Engine
+  - `GET /datasets` - list datasets
+  - `GET /datasets/{name}` - get dataset info
+  - `POST /datasets` - register dataset (multipart/form-data upload)
+  - `DELETE /datasets/{name}` - delete dataset
+  - `POST /datasets/{name}/rename` - rename dataset
+  - `GET /docs` + `GET /openapi.json` - auto-generated OpenAPI docs
+  - **Auth:** `X-API-Key` header + `X-User-ID` header
+- **F28:** Version API
+  - `GET /datasets/{name}/versions` - list versions
+  - `GET /datasets/{name}/versions/{v}` - get version
+  - `POST /datasets/{name}/versions/{v}/append` - append (async)
+  - `POST /datasets/{name}/versions/{v}/map` - map (async)
+  - `POST /datasets/{name}/versions/{v}/filter-map` - filter_map (async)
+  - `GET /jobs/{job_id}` - async job status polling
+- **F29:** Tag/note API
+  - `GET /datasets/{name}/tags` - list tags
+  - `POST /datasets/{name}/tags` - add tags
+  - `DELETE /datasets/{name}/tags` - delete tags
+  - `GET /datasets/{name}/notes` - list notes
+  - `POST /datasets/{name}/notes` - add notes
+- **F30:** Search API
+  - `GET /datasets/{name}/search` - field search (field_path + value)
+  - `GET /datasets/{name}/search-by-tag` - tag search
+  - `POST /datasets/{name}/search-with-filter` - advanced filter search
+  - `GET /datasets/{name}/scan` - full scan (limit + offset pagination)
+- **F31:** Index API
+  - `GET /datasets/{name}/indexes` - list indexes
+  - `POST /datasets/{name}/indexes` - create index
+  - `DELETE /datasets/{name}/indexes/{field}` - drop index
+- **F32:** Parquet cache API
+  - `POST /datasets/{name}/parquet-cache` - refresh cache (async)
+  - `GET /datasets/{name}/parquet-cache` - list caches
+- **F33:** Web UI - Dataset explorer
+  - Dataset list cards (name, row count, version count, last updated)
+  - Version timeline view
+  - Row browser: JSON/table dual view
+  - Pagination for large datasets
+  - API Key config panel
+- **F34:** Web UI - Tag/Note editor
+  - Tag cloud display
+  - Filter rows by tag
+  - Bulk add/remove tags
+  - Inline note editing
+  - Notes per row display
+- **F35:** Web UI - Search & filter
+  - Field search form (nested fields like `messages.0.role` supported)
+  - Tag search
+  - Advanced filter builder (visual and/or/eq/range/regex)
+  - Results table: column selection, sorting
+  - Export to CSV button
+
+### Non-Negotiables (PM Approved)
+| Rule | Reason |
+|------|--------|
+| REST server wraps Engine — no new business logic in FastAPI handlers | Keep business logic centralized |
+| API key auth (simple header-based for v0.3.0; OAuth2 deferred) | Simple enough for v0.3.0 |
+| Web UI uses modern React/Next.js with TypeScript | Modern frontend stack |
+| Async job tracking via `background_tasks` + status endpoint | Simple enough; Celery deferred |
+| OpenAPI docs auto-generated via FastAPI at `/docs` and `/openapi.json` | Auto-docs are table stakes |
+
+### Test Strategy (PM Approved)
+- L1: Unit tests for API models, auth middleware, job state tracking
+- L2: Component tests for handler logic without HTTP server
+- L3: Integration tests with TestClient hitting real endpoints
+- L4: Property tests for request/response round-trips, filter expressions
+- L5: Fuzz API endpoints with invalid inputs, malformed JSON
+- L6: Scale smoke for concurrent API requests
+- L7: Mutation testing for API layer (mutation score ≥85%)
+- L8: E2E scenario with Playwright: register → browse → tag → search → export CSV
+
+### Out of Scope (Deferred to v0.4.0+) (PM Approved)
+- OAuth2/SSO
+- Fine-grained permissions/ACL
+- Audit log UI
+- Real-time WebSocket updates
+- Multi-node deployment / Kubernetes
+

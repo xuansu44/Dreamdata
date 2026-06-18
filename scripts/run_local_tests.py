@@ -216,11 +216,11 @@ def check_version_consistency() -> list[str]:
     issues = []
 
     # Read pyproject.toml version
-    import tomlkit
-
     try:
-        pyproject_content = Path("pyproject.toml").read_text()
-        pyproject = tomlkit.parse(pyproject_content)
+        import tomllib
+
+        with open("pyproject.toml", "rb") as f:
+            pyproject = tomllib.load(f)
         toml_version = pyproject["project"]["version"]
     except Exception:
         toml_version = None
@@ -364,11 +364,11 @@ def check_library_usage_consistency() -> list[str]:
     """Check that library usage in docs matches project dependencies."""
     issues = []
 
-    import tomlkit
-
     try:
-        pyproject_content = Path("pyproject.toml").read_text()
-        pyproject = tomlkit.parse(pyproject_content)
+        import tomllib
+
+        with open("pyproject.toml", "rb") as f:
+            pyproject = tomllib.load(f)
         dependencies = pyproject["project"]["dependencies"]
         optional_deps = pyproject["project"]["optional-dependencies"]
     except Exception:

@@ -10,6 +10,7 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [git-ci-workflow.md](git-ci-workflow.md) | Committing, pushing, and monitoring CI with Monitor tool — the daily dev loop |
 | [release-a-version.md](release-a-version.md) | Cutting a release — version bump, git tag, CI monitoring, GitHub Release creation |
 | [local-testing.md](local-testing.md) | Running local tests — full test layers, bilingual docs checks, tech debt detection (uses `local-test-agent`) |
+| [planning-release.md](planning-release.md) | Planning a release — review state, design user stories, present to PM, record the plan (uses `plan-agent`) |
 
 ## Phase-1 status (2026-06-17; git-ci-workflow pattern added 2026-06-17)
 
