@@ -3,6 +3,7 @@ Parquet cache API endpoints.
 """
 
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
@@ -12,14 +13,14 @@ from dreamdata.api.models import (
     ParquetCacheInfo,
     ParquetCacheListResponse,
 )
-from dreamdata.errors import DatasetNotFoundError
+from dreamdata.errors import DatasetNotFound
 from dreamdata.sdk import Engine
 
 router = APIRouter(prefix="/datasets/{name}/parquet-cache", tags=["parquet"])
 
 
 # In-memory job storage
-_jobs: dict = {}
+_jobs: dict[str, JobStatus] = {}
 
 
 @router.get("", response_model=ParquetCacheListResponse)
@@ -31,19 +32,21 @@ def list_parquet_caches(
     try:
         dataset = engine.open_dataset(name)
         caches = dataset.list_parquet_caches()
+        result = []
+        now = datetime.now()
+        for cache in caches:
+            cache_info = ParquetCacheInfo(
+                cache_id=getattr(cache, "cache_id", ""),
+                fields=getattr(cache, "fields", None),
+                created_at=getattr(cache, "created_at", now),
+                row_count=getattr(cache, "row_count", 0),
+            )
+            result.append(cache_info)
         return ParquetCacheListResponse(
-            caches=[
-                ParquetCacheInfo(
-                    cache_id=cache["cache_id"],
-                    fields=cache.get("fields"),
-                    created_at=cache["created_at"],
-                    row_count=cache["row_count"],
-                )
-                for cache in caches
-            ],
-            total=len(caches),
+            caches=result,
+            total=len(result),
         )
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -64,20 +67,24 @@ def refresh_parquet_cache(
     job = JobStatus(
         job_id=job_id,
         status="pending",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(),
     )
     _jobs[job_id] = job
 
-    def _do_refresh():
+    def _do_refresh() -> None:
         try:
             dataset = engine.open_dataset(name)
-            dataset.refresh_parquet_cache(fields=fields)
+            # SDK uses field_path parameter, not fields
+            if fields and len(fields) == 1:
+                dataset.refresh_parquet_cache(field_path=fields[0])
+            else:
+                dataset.refresh_parquet_cache(field_path=None)
             job.status = "completed"
             job.result = {"success": True}
         except Exception as e:
             job.status = "failed"
             job.error = str(e)
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now()
 
     background_tasks.add_task(_do_refresh)
     return job

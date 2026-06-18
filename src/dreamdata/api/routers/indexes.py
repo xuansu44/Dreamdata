@@ -2,11 +2,12 @@
 Index API endpoints.
 """
 
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from dreamdata.api.dependencies import get_engine
 from dreamdata.api.models import IndexInfo, IndexListResponse
-from dreamdata.errors import DatasetNotFoundError
+from dreamdata.errors import DatasetNotFound
 from dreamdata.sdk import Engine
 
 router = APIRouter(prefix="/datasets/{name}/indexes", tags=["indexes"])
@@ -21,14 +22,12 @@ def list_indexes(
     try:
         dataset = engine.open_dataset(name)
         indexes = dataset.list_indexes()
+        now = datetime.now()
         return IndexListResponse(
-            indexes=[
-                IndexInfo(field_path=idx["field_path"], created_at=idx["created_at"])
-                for idx in indexes
-            ],
+            indexes=[IndexInfo(field_path=idx.field_path, created_at=now) for idx in indexes],
             total=len(indexes),
         )
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -45,7 +44,7 @@ def create_index(
     try:
         dataset = engine.open_dataset(name)
         dataset.create_index(field_path)
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -62,7 +61,7 @@ def drop_index(
     try:
         dataset = engine.open_dataset(name)
         dataset.drop_index(field_path)
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",

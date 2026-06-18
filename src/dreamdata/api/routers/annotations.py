@@ -2,6 +2,7 @@
 Tag and note API endpoints.
 """
 
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from dreamdata.api.dependencies import get_engine, get_user_id
@@ -13,7 +14,7 @@ from dreamdata.api.models import (
     TagRemoveRequest,
     TagsListResponse,
 )
-from dreamdata.errors import DatasetNotFoundError
+from dreamdata.errors import DatasetNotFound
 from dreamdata.sdk import Engine
 
 router = APIRouter(prefix="/datasets/{name}", tags=["annotations"])
@@ -28,16 +29,17 @@ def list_tags(
     """List all tags for a dataset."""
     try:
         dataset = engine.open_dataset(name)
-        tags = dataset.tags(user_id=user_id)
-        row_tags = {}
-        for tag in tags:
-            rows = dataset.search_by_tag(tag, user_id=user_id)
-            for row in rows:
-                if row.row_idx not in row_tags:
-                    row_tags[row.row_idx] = []
-                row_tags[row.row_idx].append(tag)
-        return TagsListResponse(tags=list(tags), row_tags=row_tags)
-    except DatasetNotFoundError:
+        tags_list = dataset.tags(user_id=user_id)
+        # Extract unique tags
+        unique_tags: set[str] = set()
+        row_tags: dict[int, list[str]] = {}
+        for row_idx, tag in tags_list:
+            unique_tags.add(tag)
+            if row_idx not in row_tags:
+                row_tags[row_idx] = []
+            row_tags[row_idx].append(tag)
+        return TagsListResponse(tags=list(unique_tags), row_tags=row_tags)
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -54,8 +56,8 @@ def add_tag(
     """Add a tag to a row."""
     try:
         dataset = engine.open_dataset(name)
-        dataset.tag(request.row_idx, request.tag, user_id=user_id)
-    except DatasetNotFoundError:
+        dataset.tag(request.row_idx, request.tag)
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -72,8 +74,8 @@ def remove_tag(
     """Remove a tag from a row."""
     try:
         dataset = engine.open_dataset(name)
-        dataset.remove_tag(request.row_idx, request.tag, user_id=user_id)
-    except DatasetNotFoundError:
+        dataset.remove_tag(request.row_idx, request.tag)
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -89,18 +91,20 @@ def list_notes(
     """List all notes for a dataset."""
     try:
         dataset = engine.open_dataset(name)
-        notes_dict = dataset.notes(user_id=user_id)
-        notes = [
-            NoteResponse(
-                row_idx=row_idx,
-                note=n["note"],
-                created_at=n["created_at"],
-                updated_at=n["updated_at"],
+        notes_list = dataset.notes(user_id=user_id)
+        notes = []
+        now = datetime.now()
+        for note_id, row_idx, body in notes_list:
+            notes.append(
+                NoteResponse(
+                    row_idx=row_idx,
+                    note=body,
+                    created_at=now,
+                    updated_at=now,
+                )
             )
-            for row_idx, n in notes_dict.items()
-        ]
         return NotesListResponse(notes=notes)
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -117,8 +121,8 @@ def add_note(
     """Add a note to a row."""
     try:
         dataset = engine.open_dataset(name)
-        dataset.note(request.row_idx, request.note, user_id=user_id)
-    except DatasetNotFoundError:
+        dataset.note(request.row_idx, request.note)
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",

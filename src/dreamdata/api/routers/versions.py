@@ -15,7 +15,7 @@ from dreamdata.api.models import (
     VersionInfo,
     VersionListResponse,
 )
-from dreamdata.errors import DatasetNotFoundError
+from dreamdata.errors import DatasetNotFound
 from dreamdata.sdk import Engine
 
 router = APIRouter(prefix="/datasets/{name}/versions", tags=["versions"])
@@ -25,15 +25,33 @@ router = APIRouter(prefix="/datasets/{name}/versions", tags=["versions"])
 _jobs: dict[str, JobStatus] = {}
 
 
-def _version_info(version: dict[str, Any]) -> VersionInfo:
+def _version_info(version: Any) -> VersionInfo:
     """Convert version dict to response model."""
     return VersionInfo(
-        version_id=version["version_id"],
-        version_number=version["version_number"],
-        row_count=version["row_count"],
-        created_at=version["created_at"],
-        parent_version=version.get("parent_version"),
+        version_id=getattr(version, "version_id", getattr(version, "id", 0)),
+        version_number=getattr(version, "version_number", 1),
+        row_count=getattr(version, "row_count", 0),
+        created_at=getattr(version, "created_at", datetime.now()),
+        parent_version=getattr(version, "parent_version", None),
     )
+
+
+def _df_to_rows(df: Any, offset: int, limit: int) -> list[RowResponse]:
+    """Convert DataFrame to RowResponse list with pagination."""
+    rows = []
+    for i, row in df.iterrows():
+        if i < offset:
+            continue
+        if i >= offset + limit:
+            break
+        rows.append(
+            RowResponse(
+                row_idx=int(row["row_idx"]),
+                data=row["data"],
+                tags=[],
+            )
+        )
+    return rows
 
 
 @router.get("", response_model=VersionListResponse)
@@ -48,49 +66,38 @@ def list_versions(
             versions=[_version_info(v) for v in versions],
             total=len(versions),
         )
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
         )
 
 
-@router.get("/{version_id}", response_model=SearchResponse)
+@router.get("/{version_number}", response_model=SearchResponse)
 def get_version(
     name: str,
-    version_id: int,
+    version_number: int,
     limit: int = 100,
     offset: int = 0,
     engine: Engine = Depends(get_engine),
 ) -> SearchResponse:
     """Get a specific version with rows."""
     try:
-        dataset = engine.open_dataset(name, version_id=version_id)
-        rows = []
-        for i, row in enumerate(dataset.scan()):
-            if i < offset:
-                continue
-            if i >= offset + limit:
-                break
-            rows.append(
-                RowResponse(
-                    row_idx=row.row_idx,
-                    data=row.data,
-                    tags=row.tags,
-                )
-            )
-        return SearchResponse(rows=rows, total=dataset.row_count)
-    except DatasetNotFoundError:
+        dataset = engine.open_dataset(name, version_number=version_number)
+        df = dataset.scan()
+        result_rows = _df_to_rows(df, offset, limit)
+        return SearchResponse(rows=result_rows, total=dataset.row_count)
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
         )
 
 
-@router.post("/{version_id}/append", response_model=JobStatus)
+@router.post("/{version_number}/append", response_model=JobStatus)
 def append_rows(
     name: str,
-    version_id: int,
+    version_number: int,
     background_tasks: BackgroundTasks,
     engine: Engine = Depends(get_engine),
 ) -> JobStatus:
@@ -101,22 +108,22 @@ def append_rows(
     job = JobStatus(
         job_id=job_id,
         status="pending",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(),
     )
     _jobs[job_id] = job
 
-    def _do_append():
+    def _do_append() -> None:
         job.status = "completed"
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now()
 
     background_tasks.add_task(_do_append)
     return job
 
 
-@router.post("/{version_id}/map", response_model=JobStatus)
+@router.post("/{version_number}/map", response_model=JobStatus)
 def map_rows(
     name: str,
-    version_id: int,
+    version_number: int,
     background_tasks: BackgroundTasks,
     engine: Engine = Depends(get_engine),
 ) -> JobStatus:
@@ -127,22 +134,22 @@ def map_rows(
     job = JobStatus(
         job_id=job_id,
         status="pending",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(),
     )
     _jobs[job_id] = job
 
-    def _do_map():
+    def _do_map() -> None:
         job.status = "completed"
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now()
 
     background_tasks.add_task(_do_map)
     return job
 
 
-@router.post("/{version_id}/filter-map", response_model=JobStatus)
+@router.post("/{version_number}/filter-map", response_model=JobStatus)
 def filter_map_rows(
     name: str,
-    version_id: int,
+    version_number: int,
     background_tasks: BackgroundTasks,
     engine: Engine = Depends(get_engine),
 ) -> JobStatus:
@@ -153,13 +160,13 @@ def filter_map_rows(
     job = JobStatus(
         job_id=job_id,
         status="pending",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(),
     )
     _jobs[job_id] = job
 
-    def _do_filter_map():
+    def _do_filter_map() -> None:
         job.status = "completed"
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now()
 
     background_tasks.add_task(_do_filter_map)
     return job

@@ -2,6 +2,7 @@
 Dataset API endpoints.
 """
 
+from datetime import datetime
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from dreamdata.api.dependencies import get_engine
@@ -9,7 +10,7 @@ from dreamdata.api.models import (
     DatasetInfo,
     DatasetListResponse,
 )
-from dreamdata.errors import DatasetAlreadyExistsError, DatasetNotFoundError
+from dreamdata.errors import DatasetAlreadyExists, DatasetNotFound
 from dreamdata.sdk import Engine
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
@@ -19,12 +20,16 @@ def _dataset_info(engine: Engine, name: str) -> DatasetInfo:
     """Get dataset info."""
     info = engine.info(name)
     versions = engine.list_versions(name)
+    # Get created_at from the first version or use a default
+    created_at = datetime.now()
+    if versions and hasattr(versions[0], "created_at"):
+        created_at = versions[0].created_at
     return DatasetInfo(
         name=name,
-        row_count=info["row_count"],
+        row_count=info.row_count,
         version_count=len(versions),
-        created_at=info["created_at"],
-        updated_at=info["updated_at"],
+        created_at=created_at,
+        updated_at=created_at,
     )
 
 
@@ -34,7 +39,12 @@ def list_datasets(
 ) -> DatasetListResponse:
     """List all datasets."""
     names = engine.list_datasets()
-    datasets = [_dataset_info(engine, name) for name in names]
+    datasets = []
+    for name in names:
+        try:
+            datasets.append(_dataset_info(engine, name))
+        except DatasetNotFound:
+            continue
     return DatasetListResponse(datasets=datasets, total=len(datasets))
 
 
@@ -46,7 +56,7 @@ def get_dataset(
     """Get dataset info."""
     try:
         return _dataset_info(engine, name)
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -73,7 +83,7 @@ async def register_dataset(
     try:
         engine.register_dataset(name, [temp_path], overwrite=overwrite)
         return _dataset_info(engine, name)
-    except DatasetAlreadyExistsError:
+    except DatasetAlreadyExists:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Dataset '{name}' already exists",
@@ -90,7 +100,7 @@ def delete_dataset(
     """Delete a dataset."""
     try:
         engine.delete_dataset(name)
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
@@ -107,12 +117,12 @@ def rename_dataset(
     try:
         engine.rename_dataset(name, new_name)
         return _dataset_info(engine, new_name)
-    except DatasetNotFoundError:
+    except DatasetNotFound:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Dataset '{name}' not found",
         )
-    except DatasetAlreadyExistsError:
+    except DatasetAlreadyExists:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Dataset '{new_name}' already exists",

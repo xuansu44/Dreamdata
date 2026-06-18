@@ -19,7 +19,7 @@ def get_engine() -> Engine:
     global _engine
     if _engine is None:
         # Try to create settings from env or defaults for testing
-        kwargs = {}
+        kwargs: dict[str, Any] = {}
         if "DATABASE_URL" in os.environ:
             kwargs["database_url"] = os.environ["DATABASE_URL"]
         else:
@@ -63,3 +63,7 @@ def get_user_id(
         return x_user_id
     # If no user_id provided, use API key as user_id
     return api_key
+
+
+# Add Any import
+from typing import Any
