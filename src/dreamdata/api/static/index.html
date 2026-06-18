@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dreamdata - Dataset Explorer</title>
+    <title>Dreamdata - 数据集管理平台</title>
     <style>
         * {
             box-sizing: border-box;
@@ -14,20 +14,78 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f7fa;
             color: #333;
+            min-height: 100vh;
         }
         header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 1.5rem 2rem;
+            padding: 1rem 2rem;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         header h1 {
-            font-size: 1.8rem;
-            margin-bottom: 0.3rem;
+            font-size: 1.5rem;
         }
-        header p {
-            opacity: 0.9;
-            font-size: 0.95rem;
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255,255,255,0.2);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .user-role {
+            background: rgba(255,255,255,0.3);
+            padding: 0.1rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .btn {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.5);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+        }
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+            border: none;
+        }
+        .btn-danger:hover {
+            background: #c53030;
         }
         .container {
             max-width: 1200px;
@@ -45,6 +103,40 @@
             font-size: 1.2rem;
             margin-bottom: 1rem;
             color: #667eea;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .nav {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .nav button {
+            background: none;
+            border: none;
+            padding: 0.75rem 1.2rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .nav button:hover {
+            color: #667eea;
+        }
+        .nav button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .nav button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .dataset-grid {
             display: grid;
@@ -73,40 +165,215 @@
             color: #666;
             display: flex;
             gap: 1rem;
+            margin-bottom: 0.5rem;
         }
-        .btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.95rem;
-            transition: background 0.2s;
+        .permission-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-weight: 500;
         }
-        .btn:hover {
-            background: #5568d3;
+        .permission-admin {
+            background: #fed7d7;
+            color: #c53030;
         }
-        .btn-secondary {
-            background: #e2e8f0;
-            color: #4a5568;
+        .permission-owner {
+            background: #fef3c7;
+            color: #c05621;
         }
-        .btn-secondary:hover {
-            background: #cbd5e0;
+        .permission-read_write {
+            background: #c6f6d5;
+            color: #2f855a;
         }
-        .row-table {
+        .permission-read_only {
+            background: #bee3f8;
+            color: #2b6cb0;
+        }
+        .table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
         }
-        .row-table th, .row-table td {
+        .table th, .table td {
             padding: 0.75rem;
             text-align: left;
             border-bottom: 1px solid #e2e8f0;
         }
-        .row-table th {
+        .table th {
             background: #f8f9fb;
             font-weight: 600;
+            color: #4a5568;
+        }
+        .table tr:hover {
+            background: #f8f9fb;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .form-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 4rem auto;
+        }
+        .login-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-header h2 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .alert-error {
+            background: #fed7d7;
+            color: #c53030;
+            border: 1px solid #fc8181;
+        }
+        .alert-success {
+            background: #c6f6d5;
+            color: #2f855a;
+            border: 1px solid #68d391;
+        }
+        .alert-info {
+            background: #bee3f8;
+            color: #2b6cb0;
+            border: 1px solid #63b3ed;
+        }
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .user-card {
+            background: #f8f9fb;
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .user-info-main {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        .user-details {
+            flex: 1;
+        }
+        .user-details h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.2rem;
+        }
+        .user-details p {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .user-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .action-btn {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        .action-btn:hover {
+            background: #cbd5e0;
+        }
+        .action-btn-danger {
+            background: #fed7d7;
+            color: #c53030;
+        }
+        .action-btn-danger:hover {
+            background: #fc8181;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal h3 {
+            margin-bottom: 1rem;
+            color: #667eea;
         }
         .tag {
             display: inline-block;
@@ -117,195 +384,1297 @@
             font-size: 0.8rem;
             margin-right: 0.3rem;
         }
-        .empty-state {
+        .hidden {
+            display: none !important;
+        }
+        .loading {
             text-align: center;
-            padding: 3rem;
+            padding: 2rem;
             color: #999;
         }
-        .config-panel {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            margin-bottom: 1rem;
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
-        .config-panel input {
-            padding: 0.5rem;
-            border: 1px solid #ddd;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .api-key-display {
+            background: #f8f9fb;
+            border: 1px solid #e2e8f0;
             border-radius: 6px;
-            flex: 1;
-            max-width: 300px;
+            padding: 1rem;
+            margin: 1rem 0;
         }
-        .nav {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-        .nav button {
-            background: none;
-            border: none;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            font-size: 0.95rem;
-            color: #666;
-            border-bottom: 2px solid transparent;
-        }
-        .nav button.active {
+        .api-key-display code {
+            display: block;
+            word-break: break-all;
+            font-size: 0.9rem;
             color: #667eea;
+        }
+        .api-key-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .api-key-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: #f8f9fb;
+            border-radius: 6px;
+        }
+        .api-key-info {
+            flex: 1;
+        }
+        .api-key-name {
+            font-weight: 500;
+            margin-bottom: 0.2rem;
+        }
+        .api-key-meta {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .permission-table {
+            margin-top: 0.5rem;
+        }
+        .permission-select {
+            padding: 0.4rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .setup-card {
+            max-width: 450px;
+            margin: 4rem auto;
+        }
+        .setup-notice {
+            background: #fef3c7;
+            border: 1px solid #f6ad55;
+            color: #c05621;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+        }
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .tabs button {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .tabs button.active {
             border-bottom-color: #667eea;
+            color: #667eea;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Dreamdata</h1>
-        <p>Versioned management engine for LLM training data</p>
-    </header>
-    <div class="container">
-        <div class="card">
-            <div class="config-panel">
-                <label>API Key:</label>
-                <input type="text" id="api-key" placeholder="Enter API key (optional)">
-                <label>User ID:</label>
-                <input type="text" id="user-id" placeholder="Enter user ID (optional)">
+    <div id="app">
+        <!-- Login View -->
+        <div id="login-view">
+            <header>
+                <h1>Dreamdata</h1>
+            </header>
+            <div class="login-container" id="login-container">
+                <!-- Content loaded dynamically -->
             </div>
         </div>
 
-        <div class="card">
-            <div class="nav">
-                <button class="active" id="nav-datasets">Datasets</button>
-                <button id="nav-explore">Explore</button>
-                <button id="nav-search">Search</button>
-            </div>
+        <!-- Main App View (when logged in) -->
+        <div id="main-view" class="hidden">
+            <header>
+                <h1>Dreamdata</h1>
+                <div class="header-right">
+                    <div class="user-info">
+                        <span id="header-username"></span>
+                        <span class="user-role" id="header-role"></span>
+                    </div>
+                    <button class="btn" id="btn-settings">设置</button>
+                    <button class="btn" id="btn-logout">退出</button>
+                </div>
+            </header>
+            <div class="container">
+                <div class="card">
+                    <div class="nav" id="main-nav">
+                        <button class="active" data-view="datasets">数据集</button>
+                        <button data-view="users" id="nav-users">用户管理</button>
+                        <button data-view="permissions" id="nav-permissions">权限管理</button>
+                    </div>
 
-            <div id="datasets-view">
-                <h2>Datasets</h2>
-                <div id="datasets-grid" class="dataset-grid">
-                    <div class="empty-state">Loading datasets...</div>
+                    <!-- Datasets View -->
+                    <div id="view-datasets">
+                        <div class="card-header">
+                            <h2>我的数据集</h2>
+                        </div>
+                        <div id="datasets-content">
+                            <div class="loading"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Users View (admin only) -->
+                    <div id="view-users" class="hidden">
+                        <div class="card-header">
+                            <h2>用户管理</h2>
+                            <button class="btn-primary" id="btn-create-user">创建用户</button>
+                        </div>
+                        <div id="users-content">
+                            <div class="loading"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Permissions View -->
+                    <div id="view-permissions" class="hidden">
+                        <div class="card-header">
+                            <h2>权限管理</h2>
+                        </div>
+                        <div id="permissions-content">
+                            <div class="loading"><div class="spinner"></div></div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div id="explore-view" style="display: none;">
-                <h2>Dataset Explorer</h2>
-                <div id="explore-content">
-                    <div class="empty-state">Select a dataset first</div>
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <div class="card-header">
+                    <h3>用户设置</h3>
+                    <button class="btn-secondary" id="btn-close-settings">关闭</button>
+                </div>
+                <div class="tabs">
+                    <button class="active" data-tab="password">修改密码</button>
+                    <button data-tab="apikeys">API 密钥</button>
+                </div>
+                <div id="tab-password">
+                    <form id="form-change-password">
+                        <div class="form-group">
+                            <label>当前密码</label>
+                            <input type="password" id="current-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>新密码</label>
+                            <input type="password" id="new-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>确认新密码</label>
+                            <input type="password" id="confirm-password" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">修改密码</button>
+                        </div>
+                    </form>
+                </div>
+                <div id="tab-apikeys" class="hidden">
+                    <div class="card-header">
+                        <h4>API 密钥</h4>
+                        <button class="btn-primary" id="btn-create-apikey">创建密钥</button>
+                    </div>
+                    <div id="apikeys-content">
+                        <div class="empty-state">暂无 API 密钥</div>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div id="search-view" style="display: none;">
-                <h2>Search</h2>
-                <div id="search-content">
-                    <div class="empty-state">Select a dataset first</div>
+        <!-- Create User Modal -->
+        <div id="create-user-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <h3>创建用户</h3>
+                <form id="form-create-user">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="new-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="new-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="new-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label>角色</label>
+                        <select id="new-role">
+                            <option value="user">普通用户</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="btn-cancel-create-user">取消</button>
+                        <button type="submit" class="btn-primary">创建</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit User Modal -->
+        <div id="edit-user-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <h3>编辑用户</h3>
+                <form id="form-edit-user">
+                    <input type="hidden" id="edit-user-id">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="edit-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="edit-email" required>
+                    </div>
+                    <div class="form-group" id="edit-role-group">
+                        <label>角色</label>
+                        <select id="edit-role">
+                            <option value="user">普通用户</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="edit-active-group">
+                        <label>状态</label>
+                        <select id="edit-active">
+                            <option value="true">启用</option>
+                            <option value="false">禁用</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="btn-cancel-edit-user">取消</button>
+                        <button type="submit" class="btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Create API Key Modal -->
+        <div id="create-apikey-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <h3>创建 API 密钥</h3>
+                <form id="form-create-apikey">
+                    <div class="form-group">
+                        <label>密钥名称</label>
+                        <input type="text" id="apikey-name" required placeholder="例如: 我的脚本">
+                    </div>
+                    <div class="form-group">
+                        <label>有效期 (天, 可选)</label>
+                        <input type="number" id="apikey-expires" min="1" placeholder="留空表示永不过期">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="btn-cancel-create-apikey">取消</button>
+                        <button type="submit" class="btn-primary">创建</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Show API Key Modal -->
+        <div id="show-apikey-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <h3>API 密钥已创建</h3>
+                <div class="alert alert-info">
+                    请保存此密钥，它只会显示一次！
+                </div>
+                <div class="api-key-display">
+                    <code id="new-apikey-secret"></code>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" id="btn-copy-apikey">复制</button>
+                    <button class="btn-secondary" id="btn-close-apikey">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dataset Permissions Modal -->
+        <div id="dataset-permissions-modal" class="modal-overlay hidden">
+            <div class="modal" style="max-width: 600px;">
+                <div class="card-header">
+                    <h3 id="dataset-permissions-title">数据集权限</h3>
+                    <button class="btn-secondary" id="btn-close-dataset-permissions">关闭</button>
+                </div>
+                <div class="card-header">
+                    <h4>分配权限</h4>
+                    <button class="btn-primary" id="btn-grant-permission">添加</button>
+                </div>
+                <form id="form-grant-permission" class="hidden">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>用户</label>
+                            <select id="grant-user-id"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>权限级别</label>
+                            <select id="grant-permission-level">
+                                <option value="read_only">只读</option>
+                                <option value="read_write">读写</option>
+                                <option value="owner">所有者</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="btn-cancel-grant">取消</button>
+                        <button type="submit" class="btn-primary">授权</button>
+                    </div>
+                </form>
+                <div id="dataset-permissions-content">
+                    <div class="loading"><div class="spinner"></div></div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        let currentDataset = null;
+        // ============================================
+        // State Management
+        // ============================================
+        const state = {
+            accessToken: localStorage.getItem('accessToken'),
+            refreshToken: localStorage.getItem('refreshToken'),
+            currentUser: null,
+            needsSetup: false,
+            currentDataset: null
+        };
 
-        function getHeaders() {
-            const headers = {};
-            const apiKey = document.getElementById('api-key').value;
-            const userId = document.getElementById('user-id').value;
-            if (apiKey) headers['X-API-Key'] = apiKey;
-            if (userId) headers['X-User-ID'] = userId;
-            return headers;
-        }
+        // ============================================
+        // API Helpers
+        // ============================================
+        async function apiRequest(endpoint, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
 
-        async function loadDatasets() {
+            if (state.accessToken) {
+                headers['Authorization'] = `Bearer ${state.accessToken}`;
+            }
+
             try {
-                const response = await fetch('/datasets', { headers: getHeaders() });
-                const data = await response.json();
-                const grid = document.getElementById('datasets-grid');
+                const response = await fetch(endpoint, {
+                    ...options,
+                    headers
+                });
 
-                if (data.datasets.length === 0) {
-                    grid.innerHTML = '<div class="empty-state">No datasets yet</div>';
-                    return;
+                if (response.status === 401) {
+                    // Try to refresh token
+                    if (await tryRefreshToken()) {
+                        // Retry the request with new token
+                        headers['Authorization'] = `Bearer ${state.accessToken}`;
+                        const retryResponse = await fetch(endpoint, {
+                            ...options,
+                            headers
+                        });
+                        return handleResponse(retryResponse);
+                    } else {
+                        // Refresh failed, log out
+                        logout();
+                        throw new Error('Unauthorized');
+                    }
                 }
 
-                grid.innerHTML = data.datasets.map(ds => `
-                    <div class="dataset-card" onclick="selectDataset('${ds.name}')">
-                        <div class="dataset-name">${ds.name}</div>
-                        <div class="dataset-stats">
-                            <span>${ds.row_count} rows</span>
-                            <span>${ds.version_count} versions</span>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (e) {
-                console.error('Failed to load datasets:', e);
+                return handleResponse(response);
+            } catch (error) {
+                console.error('API request failed:', error);
+                throw error;
             }
         }
 
-        function selectDataset(name) {
-            currentDataset = name;
-            showView('explore');
-            loadExploreView();
+        async function handleResponse(response) {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw { status: response.status, message: data.detail || 'Request failed' };
+            }
+            return data;
         }
 
-        async function loadExploreView() {
-            if (!currentDataset) return;
+        async function tryRefreshToken() {
+            if (!state.refreshToken) return false;
 
             try {
-                const [dsResponse, rowsResponse] = await Promise.all([
-                    fetch(`/datasets/${currentDataset}`, { headers: getHeaders() }),
-                    fetch(`/datasets/${currentDataset}/scan?limit=20`, { headers: getHeaders() }),
+                const response = await fetch('/auth/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: state.refreshToken })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    state.accessToken = data.access_token;
+                    localStorage.setItem('accessToken', data.access_token);
+                    if (data.refresh_token) {
+                        state.refreshToken = data.refresh_token;
+                        localStorage.setItem('refreshToken', data.refresh_token);
+                    }
+                    return true;
+                }
+            } catch (e) {
+                console.error('Token refresh failed:', e);
+            }
+
+            return false;
+        }
+
+        // ============================================
+        // View Management
+        // ============================================
+        function showView(viewName) {
+            document.querySelectorAll('#view-datasets, #view-users, #view-permissions').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.querySelectorAll('#main-nav button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            document.querySelector(`#main-nav button[data-view="${viewName}"]`).classList.add('active');
+        }
+
+        function showLoginView() {
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('main-view').classList.add('hidden');
+            renderLoginContainer();
+        }
+
+        function showMainView() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('main-view').classList.remove('hidden');
+            updateHeader();
+            loadDatasets();
+        }
+
+        function updateHeader() {
+            if (state.currentUser) {
+                document.getElementById('header-username').textContent = state.currentUser.username;
+                document.getElementById('header-role').textContent = state.currentUser.role === 'admin' ? '管理员' : '用户';
+                document.getElementById('header-role').className = `user-role ${state.currentUser.role === 'admin' ? 'permission-admin' : ''}`;
+
+                // Show/hide admin nav items
+                const navUsers = document.getElementById('nav-users');
+                if (state.currentUser.role === 'admin') {
+                    navUsers.classList.remove('hidden');
+                } else {
+                    navUsers.classList.add('hidden');
+                }
+            }
+        }
+
+        // ============================================
+        // Login/Setup Rendering
+        // ============================================
+        async function renderLoginContainer() {
+            const container = document.getElementById('login-container');
+
+            try {
+                // Check if setup is needed
+                const response = await fetch('/auth/setup/status');
+                const status = await response.json().catch(() => ({}));
+                state.needsSetup = status.needs_setup !== false;
+            } catch (e) {
+                // If endpoint doesn't exist, assume setup is needed
+                state.needsSetup = true;
+            }
+
+            if (state.needsSetup) {
+                renderSetupForm(container);
+            } else {
+                renderLoginForm(container);
+            }
+        }
+
+        function renderSetupForm(container) {
+            container.innerHTML = `
+                <div class="login-card setup-card">
+                    <div class="login-header">
+                        <h2>初始化设置</h2>
+                        <p>创建第一个管理员账户</p>
+                    </div>
+                    <div class="setup-notice">
+                        这是第一次运行，请创建管理员账户来开始使用。
+                    </div>
+                    <div id="setup-alert"></div>
+                    <form id="form-setup">
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input type="text" id="setup-username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>邮箱</label>
+                            <input type="email" id="setup-email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input type="password" id="setup-password" required>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">
+                            初始化
+                        </button>
+                    </form>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: #666;">
+                        已有账户？<a href="#" id="link-to-login">去登录</a>
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('form-setup').addEventListener('submit', handleSetup);
+            document.getElementById('link-to-login').addEventListener('click', (e) => {
+                e.preventDefault();
+                state.needsSetup = false;
+                renderLoginForm(container);
+            });
+        }
+
+        function renderLoginForm(container) {
+            container.innerHTML = `
+                <div class="login-card">
+                    <div class="login-header">
+                        <h2>登录</h2>
+                        <p>访问您的数据集</p>
+                    </div>
+                    <div id="login-alert"></div>
+                    <form id="form-login">
+                        <div class="form-group">
+                            <label>用户名或邮箱</label>
+                            <input type="text" id="login-username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input type="password" id="login-password" required>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">
+                            登录
+                        </button>
+                    </form>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: #666;">
+                        第一次使用？<a href="#" id="link-to-setup">初始化设置</a>
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('form-login').addEventListener('submit', handleLogin);
+            document.getElementById('link-to-setup').addEventListener('click', (e) => {
+                e.preventDefault();
+                state.needsSetup = true;
+                renderSetupForm(container);
+            });
+        }
+
+        // ============================================
+        // Auth Handlers
+        // ============================================
+        async function handleSetup(e) {
+            e.preventDefault();
+            const alertDiv = document.getElementById('setup-alert');
+            alertDiv.innerHTML = '';
+
+            try {
+                const data = await apiRequest('/auth/setup', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username: document.getElementById('setup-username').value,
+                        email: document.getElementById('setup-email').value,
+                        password: document.getElementById('setup-password').value
+                    })
+                });
+
+                // Auto login after setup
+                await handleLoginAfterSetup(
+                    document.getElementById('setup-username').value,
+                    document.getElementById('setup-password').value
+                );
+            } catch (error) {
+                alertDiv.innerHTML = `<div class="alert alert-error">${error.message || '设置失败'}</div>`;
+            }
+        }
+
+        async function handleLoginAfterSetup(username, password) {
+            try {
+                const data = await apiRequest('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+
+                state.accessToken = data.access_token;
+                state.refreshToken = data.refresh_token;
+                state.currentUser = data.user;
+                localStorage.setItem('accessToken', data.access_token);
+                localStorage.setItem('refreshToken', data.refresh_token);
+
+                showMainView();
+            } catch (error) {
+                // If auto-login fails, just show login form
+                state.needsSetup = false;
+                renderLoginForm(document.getElementById('login-container'));
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const alertDiv = document.getElementById('login-alert');
+            alertDiv.innerHTML = '';
+
+            try {
+                const data = await apiRequest('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username: document.getElementById('login-username').value,
+                        password: document.getElementById('login-password').value
+                    })
+                });
+
+                state.accessToken = data.access_token;
+                state.refreshToken = data.refresh_token;
+                state.currentUser = data.user;
+                localStorage.setItem('accessToken', data.access_token);
+                localStorage.setItem('refreshToken', data.refresh_token);
+
+                showMainView();
+            } catch (error) {
+                alertDiv.innerHTML = `<div class="alert alert-error">${error.message || '登录失败'}</div>`;
+            }
+        }
+
+        function logout() {
+            state.accessToken = null;
+            state.refreshToken = null;
+            state.currentUser = null;
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            showLoginView();
+        }
+
+        // ============================================
+        // Datasets
+        // ============================================
+        async function loadDatasets() {
+            const content = document.getElementById('datasets-content');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const [myDatasets, allDatasets] = await Promise.all([
+                    apiRequest('/permissions/me/datasets'),
+                    apiRequest('/datasets').catch(() => ({ datasets: [] }))
                 ]);
 
-                const ds = await dsResponse.json();
-                const rows = await rowsResponse.json();
+                // Create a map for quick lookup
+                const myPermMap = {};
+                myDatasets.forEach(ds => {
+                    myPermMap[ds.name] = ds.permission_level;
+                });
 
-                const content = document.getElementById('explore-content');
+                // Filter datasets the user has access to
+                const accessibleDatasets = allDatasets.datasets.filter(ds =>
+                    state.currentUser.role === 'admin' || myPermMap[ds.name]
+                );
+
+                if (accessibleDatasets.length === 0) {
+                    content.innerHTML = `
+                        <div class="empty-state">
+                            暂无数据集
+                            <div style="margin-top: 1rem; font-size: 0.9rem;">
+                                使用 SDK 创建您的第一个数据集
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
                 content.innerHTML = `
-                    <h3>${ds.name}</h3>
-                    <p><strong>${ds.row_count}</strong> rows, <strong>${ds.version_count}</strong> versions</p>
-                    <table class="row-table">
+                    <div class="dataset-grid">
+                        ${accessibleDatasets.map(ds => {
+                            const perm = myPermMap[ds.name] || (state.currentUser.role === 'admin' ? 'admin' : null);
+                            return `
+                                <div class="dataset-card" onclick="openDatasetPermissions('${ds.name}')">
+                                    <div class="dataset-name">${escapeHtml(ds.name)}</div>
+                                    <div class="dataset-stats">
+                                        <span>${ds.row_count} 行</span>
+                                        <span>${ds.version_count} 版本</span>
+                                    </div>
+                                    ${perm ? `<span class="permission-badge permission-${perm}">${getPermissionLabel(perm)}</span>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = `<div class="alert alert-error">加载失败: ${error.message}</div>`;
+            }
+        }
+
+        // ============================================
+        // Users Management
+        // ============================================
+        async function loadUsers() {
+            const content = document.getElementById('users-content');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const users = await apiRequest('/users');
+
+                if (users.length === 0) {
+                    content.innerHTML = '<div class="empty-state">暂无用户</div>';
+                    return;
+                }
+
+                content.innerHTML = `
+                    <div class="user-grid">
+                        ${users.map(user => `
+                            <div class="user-card">
+                                <div class="user-info-main">
+                                    <div class="user-avatar">${user.username[0].toUpperCase()}</div>
+                                    <div class="user-details">
+                                        <h4>${escapeHtml(user.username)}</h4>
+                                        <p>${escapeHtml(user.email)}</p>
+                                        <span class="permission-badge permission-${user.role}">
+                                            ${user.role === 'admin' ? '管理员' : '用户'}
+                                        </span>
+                                        ${!user.is_active ? '<span class="tag" style="background: #fed7d7; color: #c53030;">已禁用</span>' : ''}
+                                    </div>
+                                </div>
+                                <div class="user-actions">
+                                    ${user.id !== state.currentUser.id ? `
+                                        <button class="action-btn" onclick="editUser(${user.id})">编辑</button>
+                                        <button class="action-btn action-btn-danger" onclick="deleteUser(${user.id})">删除</button>
+                                    ` : '<span style="font-size: 0.8rem; color: #999;">当前用户</span>'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = `<div class="alert alert-error">加载失败: ${error.message}</div>`;
+            }
+        }
+
+        async function editUser(userId) {
+            try {
+                const user = await apiRequest(`/users/${userId}`);
+                document.getElementById('edit-user-id').value = user.id;
+                document.getElementById('edit-username').value = user.username;
+                document.getElementById('edit-email').value = user.email;
+                document.getElementById('edit-role').value = user.role;
+                document.getElementById('edit-active').value = String(user.is_active);
+
+                // Show/hide role and active fields based on whether current user is admin
+                if (state.currentUser.role === 'admin') {
+                    document.getElementById('edit-role-group').classList.remove('hidden');
+                    document.getElementById('edit-active-group').classList.remove('hidden');
+                } else {
+                    document.getElementById('edit-role-group').classList.add('hidden');
+                    document.getElementById('edit-active-group').classList.add('hidden');
+                }
+
+                document.getElementById('edit-user-modal').classList.remove('hidden');
+            } catch (error) {
+                alert(error.message || '加载用户失败');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('确定要删除此用户吗？')) return;
+
+            try {
+                await apiRequest(`/users/${userId}`, { method: 'DELETE' });
+                loadUsers();
+            } catch (error) {
+                alert(error.message || '删除失败');
+            }
+        }
+
+        // ============================================
+        // Permissions Management
+        // ============================================
+        async function loadPermissionsView() {
+            const content = document.getElementById('permissions-content');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const [myDatasets, allDatasets] = await Promise.all([
+                    apiRequest('/permissions/me/datasets'),
+                    apiRequest('/datasets').catch(() => ({ datasets: [] }))
+                ]);
+
+                // Filter datasets user owns or is admin
+                const manageableDatasets = allDatasets.datasets.filter(ds => {
+                    if (state.currentUser.role === 'admin') return true;
+                    const myDs = myDatasets.find(d => d.name === ds.name);
+                    return myDs && myDs.permission_level === 'owner';
+                });
+
+                if (manageableDatasets.length === 0) {
+                    content.innerHTML = `
+                        <div class="empty-state">
+                            没有可管理的数据集
+                            <div style="margin-top: 1rem; font-size: 0.9rem;">
+                                您需要是数据集所有者或管理员才能管理权限
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                content.innerHTML = `
+                    <div class="dataset-grid">
+                        ${manageableDatasets.map(ds => {
+                            const myDs = myDatasets.find(d => d.name === ds.name);
+                            const perm = myDs ? myDs.permission_level : 'admin';
+                            return `
+                                <div class="dataset-card" onclick="openDatasetPermissions('${ds.name}')">
+                                    <div class="dataset-name">${escapeHtml(ds.name)}</div>
+                                    <div class="dataset-stats">
+                                        <span>${ds.row_count} 行</span>
+                                    </div>
+                                    <span class="permission-badge permission-${perm}">${getPermissionLabel(perm)}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = `<div class="alert alert-error">加载失败: ${error.message}</div>`;
+            }
+        }
+
+        async function openDatasetPermissions(datasetName) {
+            state.currentDataset = datasetName;
+            document.getElementById('dataset-permissions-title').textContent = `${datasetName} - 权限管理`;
+            document.getElementById('dataset-permissions-modal').classList.remove('hidden');
+            document.getElementById('form-grant-permission').classList.add('hidden');
+            loadDatasetPermissions();
+            loadUsersForGrant();
+        }
+
+        async function loadDatasetPermissions() {
+            const content = document.getElementById('dataset-permissions-content');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const permissions = await apiRequest(`/permissions/datasets/${state.currentDataset}`);
+
+                if (permissions.length === 0) {
+                    content.innerHTML = '<div class="empty-state">暂无权限记录</div>';
+                    return;
+                }
+
+                content.innerHTML = `
+                    <table class="table permission-table">
                         <thead>
                             <tr>
-                                <th>Row #</th>
-                                <th>Data</th>
-                                <th>Tags</th>
+                                <th>用户</th>
+                                <th>权限级别</th>
+                                <th>授权者</th>
+                                <th>授权时间</th>
+                                <th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${rows.rows.map(row => `
+                            ${permissions.map(p => `
                                 <tr>
-                                    <td>${row.row_idx}</td>
-                                    <td><code>${JSON.stringify(row.data).slice(0, 100)}${JSON.stringify(row.data).length > 100 ? '...' : ''}</code></td>
-                                    <td>${row.tags.map(t => `<span class="tag">${t}</span>`).join('')}</td>
+                                    <td>${p.user ? escapeHtml(p.user.username) : '未知用户'}</td>
+                                    <td>
+                                        <select class="permission-select"
+                                                onchange="updatePermission(${p.user_id}, this.value)"
+                                                ${p.user_id === state.currentUser.id ? 'disabled' : ''}>
+                                            <option value="read_only" ${p.permission_level === 'read_only' ? 'selected' : ''}>只读</option>
+                                            <option value="read_write" ${p.permission_level === 'read_write' ? 'selected' : ''}>读写</option>
+                                            <option value="owner" ${p.permission_level === 'owner' ? 'selected' : ''}>所有者</option>
+                                        </select>
+                                    </td>
+                                    <td>${p.granted_by || '-'}</td>
+                                    <td>${p.granted_at ? new Date(p.granted_at).toLocaleDateString() : '-'}</td>
+                                    <td>
+                                        ${p.user_id !== state.currentUser.id ? `
+                                            <button class="action-btn action-btn-danger" onclick="revokePermission(${p.user_id})">撤销</button>
+                                        ` : '-'}
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>
                 `;
-            } catch (e) {
-                console.error('Failed to load dataset:', e);
+            } catch (error) {
+                content.innerHTML = `<div class="alert alert-error">加载失败: ${error.message}</div>`;
             }
         }
 
-        function showView(viewName) {
-            document.querySelectorAll('#datasets-view, #explore-view, #search-view').forEach(el => {
-                el.style.display = 'none';
-            });
-            document.getElementById(`${viewName}-view`).style.display = 'block';
+        async function loadUsersForGrant() {
+            try {
+                const users = await apiRequest('/users');
+                const existingPermissions = await apiRequest(`/permissions/datasets/${state.currentDataset}`).catch(() => []);
+                const existingUserIds = new Set(existingPermissions.map(p => p.user_id));
 
-            document.querySelectorAll('.nav button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(`nav-${viewName}`).classList.add('active');
+                const availableUsers = users.filter(u => !existingUserIds.has(u.id));
+                const select = document.getElementById('grant-user-id');
+                select.innerHTML = availableUsers.map(u =>
+                    `<option value="${u.id}">${escapeHtml(u.username)} (${escapeHtml(u.email)})</option>`
+                ).join('') || '<option value="">无可用用户</option>';
+            } catch (error) {
+                console.error('Failed to load users for grant:', error);
+            }
         }
 
-        document.getElementById('nav-datasets').addEventListener('click', () => {
-            showView('datasets');
-            loadDatasets();
-        });
-        document.getElementById('nav-explore').addEventListener('click', () => {
-            showView('explore');
-            if (currentDataset) loadExploreView();
-        });
-        document.getElementById('nav-search').addEventListener('click', () => showView('search'));
+        async function updatePermission(userId, level) {
+            try {
+                await apiRequest(`/permissions/datasets/${state.currentDataset}/users/${userId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ permission_level: level })
+                });
+                loadDatasetPermissions();
+            } catch (error) {
+                alert(error.message || '更新失败');
+                loadDatasetPermissions();
+            }
+        }
 
-        loadDatasets();
+        async function revokePermission(userId) {
+            if (!confirm('确定要撤销此用户的权限吗？')) return;
+
+            try {
+                await apiRequest(`/permissions/datasets/${state.currentDataset}/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                loadDatasetPermissions();
+                loadUsersForGrant();
+            } catch (error) {
+                alert(error.message || '撤销失败');
+            }
+        }
+
+        async function grantPermission(e) {
+            e.preventDefault();
+
+            const userId = parseInt(document.getElementById('grant-user-id').value);
+            if (!userId) {
+                alert('请选择用户');
+                return;
+            }
+
+            try {
+                await apiRequest(`/permissions/datasets/${state.currentDataset}`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: userId,
+                        permission_level: document.getElementById('grant-permission-level').value
+                    })
+                });
+                document.getElementById('form-grant-permission').classList.add('hidden');
+                loadDatasetPermissions();
+                loadUsersForGrant();
+            } catch (error) {
+                alert(error.message || '授权失败');
+            }
+        }
+
+        // ============================================
+        // Settings (Password & API Keys)
+        // ============================================
+        function showSettings() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            showSettingsTab('password');
+            loadApiKeys();
+        }
+
+        function showSettingsTab(tabName) {
+            document.querySelectorAll('#tab-password, #tab-apikeys').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.querySelectorAll('#settings-modal .tabs button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.querySelector(`#settings-modal .tabs button[data-tab="${tabName}"]`).classList.add('active');
+        }
+
+        async function changePassword(e) {
+            e.preventDefault();
+
+            const current = document.getElementById('current-password').value;
+            const newPass = document.getElementById('new-password').value;
+            const confirm = document.getElementById('confirm-password').value;
+
+            if (newPass !== confirm) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+
+            try {
+                await apiRequest('/auth/change-password', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        current_password: current,
+                        new_password: newPass
+                    })
+                });
+
+                alert('密码修改成功');
+                document.getElementById('form-change-password').reset();
+            } catch (error) {
+                alert(error.message || '密码修改失败');
+            }
+        }
+
+        async function loadApiKeys() {
+            const content = document.getElementById('apikeys-content');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const keys = await apiRequest('/auth/api-keys');
+
+                if (keys.length === 0) {
+                    content.innerHTML = '<div class="empty-state">暂无 API 密钥</div>';
+                    return;
+                }
+
+                content.innerHTML = `
+                    <div class="api-key-list">
+                        ${keys.map(key => `
+                            <div class="api-key-item">
+                                <div class="api-key-info">
+                                    <div class="api-key-name">${escapeHtml(key.name || '未命名')}</div>
+                                    <div class="api-key-meta">
+                                        前缀: ${key.key_prefix} |
+                                        创建: ${new Date(key.created_at).toLocaleDateString()}
+                                        ${key.expires_at ? ` | 过期: ${new Date(key.expires_at).toLocaleDateString()}` : ''}
+                                    </div>
+                                </div>
+                                <button class="action-btn action-btn-danger" onclick="revokeApiKey(${key.id})">撤销</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = `<div class="alert alert-error">加载失败: ${error.message}</div>`;
+            }
+        }
+
+        async function createApiKey(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('apikey-name').value;
+            const expiresInDays = document.getElementById('apikey-expires').value;
+
+            try {
+                const key = await apiRequest('/auth/api-keys', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: name,
+                        expires_in_days: expiresInDays ? parseInt(expiresInDays) : null
+                    })
+                });
+
+                document.getElementById('create-apikey-modal').classList.add('hidden');
+                document.getElementById('new-apikey-secret').textContent = key.secret;
+                document.getElementById('show-apikey-modal').classList.remove('hidden');
+                document.getElementById('form-create-apikey').reset();
+
+                loadApiKeys();
+            } catch (error) {
+                alert(error.message || '创建失败');
+            }
+        }
+
+        async function revokeApiKey(keyId) {
+            if (!confirm('确定要撤销此 API 密钥吗？')) return;
+
+            try {
+                await apiRequest(`/auth/api-keys/${keyId}`, { method: 'DELETE' });
+                loadApiKeys();
+            } catch (error) {
+                alert(error.message || '撤销失败');
+            }
+        }
+
+        // ============================================
+        // Utility Functions
+        // ============================================
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function getPermissionLabel(level) {
+            const labels = {
+                'admin': '管理员',
+                'owner': '所有者',
+                'read_write': '读写',
+                'read_only': '只读'
+            };
+            return labels[level] || level;
+        }
+
+        // ============================================
+        // Initialize App
+        // ============================================
+        async function init() {
+            // Check if we have a token and validate it
+            if (state.accessToken) {
+                try {
+                    state.currentUser = await apiRequest('/users/me');
+                    showMainView();
+                } catch (e) {
+                    // Token invalid, clear and show login
+                    state.accessToken = null;
+                    state.refreshToken = null;
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    showLoginView();
+                }
+            } else {
+                showLoginView();
+            }
+
+            // ============================================
+            // Event Listeners
+            // ============================================
+
+            // Logout
+            document.getElementById('btn-logout').addEventListener('click', logout);
+
+            // Main navigation
+            document.querySelectorAll('#main-nav button[data-view]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const view = btn.dataset.view;
+                    showView(view);
+                    if (view === 'users') loadUsers();
+                    if (view === 'permissions') loadPermissionsView();
+                });
+            });
+
+            // Settings
+            document.getElementById('btn-settings').addEventListener('click', showSettings);
+            document.getElementById('btn-close-settings').addEventListener('click', () => {
+                document.getElementById('settings-modal').classList.add('hidden');
+            });
+
+            // Settings tabs
+            document.querySelectorAll('#settings-modal .tabs button').forEach(btn => {
+                btn.addEventListener('click', () => showSettingsTab(btn.dataset.tab));
+            });
+
+            // Change password
+            document.getElementById('form-change-password').addEventListener('submit', changePassword);
+
+            // API Keys
+            document.getElementById('btn-create-apikey').addEventListener('click', () => {
+                document.getElementById('create-apikey-modal').classList.remove('hidden');
+            });
+            document.getElementById('btn-cancel-create-apikey').addEventListener('click', () => {
+                document.getElementById('create-apikey-modal').classList.add('hidden');
+            });
+            document.getElementById('form-create-apikey').addEventListener('submit', createApiKey);
+            document.getElementById('btn-close-apikey').addEventListener('click', () => {
+                document.getElementById('show-apikey-modal').classList.add('hidden');
+            });
+            document.getElementById('btn-copy-apikey').addEventListener('click', () => {
+                const secret = document.getElementById('new-apikey-secret').textContent;
+                navigator.clipboard.writeText(secret).then(() => {
+                    alert('已复制到剪贴板');
+                });
+            });
+
+            // Create user
+            document.getElementById('btn-create-user').addEventListener('click', () => {
+                document.getElementById('create-user-modal').classList.remove('hidden');
+            });
+            document.getElementById('btn-cancel-create-user').addEventListener('click', () => {
+                document.getElementById('create-user-modal').classList.add('hidden');
+            });
+            document.getElementById('form-create-user').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                try {
+                    await apiRequest('/users', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            username: document.getElementById('new-username').value,
+                            email: document.getElementById('new-email').value,
+                            password: document.getElementById('new-password').value,
+                            role: document.getElementById('new-role').value
+                        })
+                    });
+                    document.getElementById('create-user-modal').classList.add('hidden');
+                    document.getElementById('form-create-user').reset();
+                    loadUsers();
+                } catch (error) {
+                    alert(error.message || '创建失败');
+                }
+            });
+
+            // Edit user
+            document.getElementById('btn-cancel-edit-user').addEventListener('click', () => {
+                document.getElementById('edit-user-modal').classList.add('hidden');
+            });
+            document.getElementById('form-edit-user').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const userId = parseInt(document.getElementById('edit-user-id').value);
+                try {
+                    const update = {
+                        username: document.getElementById('edit-username').value,
+                        email: document.getElementById('edit-email').value
+                    };
+                    if (state.currentUser.role === 'admin') {
+                        update.role = document.getElementById('edit-role').value;
+                        update.is_active = document.getElementById('edit-active').value === 'true';
+                    }
+                    await apiRequest(`/users/${userId}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify(update)
+                    });
+                    document.getElementById('edit-user-modal').classList.add('hidden');
+                    loadUsers();
+                    if (userId === state.currentUser.id) {
+                        state.currentUser = await apiRequest('/users/me');
+                        updateHeader();
+                    }
+                } catch (error) {
+                    alert(error.message || '更新失败');
+                }
+            });
+
+            // Dataset permissions modal
+            document.getElementById('btn-close-dataset-permissions').addEventListener('click', () => {
+                document.getElementById('dataset-permissions-modal').classList.add('hidden');
+            });
+            document.getElementById('btn-grant-permission').addEventListener('click', () => {
+                document.getElementById('form-grant-permission').classList.remove('hidden');
+            });
+            document.getElementById('btn-cancel-grant').addEventListener('click', () => {
+                document.getElementById('form-grant-permission').classList.add('hidden');
+            });
+            document.getElementById('form-grant-permission').addEventListener('submit', grantPermission);
+
+            // Close modals when clicking outside
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        overlay.classList.add('hidden');
+                    }
+                });
+            });
+        }
+
+        // Make functions available globally for onclick handlers
+        window.openDatasetPermissions = openDatasetPermissions;
+        window.editUser = editUser;
+        window.deleteUser = deleteUser;
+        window.updatePermission = updatePermission;
+        window.revokePermission = revokePermission;
+        window.revokeApiKey = revokeApiKey;
+
+        // Start the app
+        init();
     </script>
 </body>
 </html>

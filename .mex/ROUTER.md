@@ -24,7 +24,7 @@ edges:
     condition: when writing tests, designing coverage, or questioning whether something can be tested
   - target: patterns/INDEX.md
     condition: when starting a task — check the pattern index for a matching pattern file
-last_updated: 2026-06-18 (v0.4.0 planning in progress - User Auth & Permissions)
+last_updated: 2026-06-18 (v0.5.0 released - Web UI Permission Management complete!)
 ---
 
 # Session Bootstrap
@@ -83,6 +83,12 @@ Then read this file fully before doing anything else in this session.
   - Web UI at `/` - React-based dataset explorer with search, tagging, annotations
   - 257/258 tests passing (1 skipped)
   - All lint/mypy checks clean, CI green
+- **v0.4.0 released!** (2026-06-18). Phase 6 (User Authentication & Permissions) shipped!
+  - Phase 6: F36-F50 (users table, password hashing, JWT tokens, API keys, fine-grained permissions, auth endpoints, user management, permission management)
+  - Alembic migration `0004_users_permissions` adds `users`, `api_keys`, `dataset_permissions`, `password_reset_tokens` tables
+  - New dependencies: `python-jose[cryptography]`, `email-validator`, optional `argon2-cffi`
+  - Backward compatibility: old `X-API-Key` + `X-User-ID` continue to work; existing datasets default to admin-only access
+  - 255/255 tests passing; all lint/mypy checks clean, CI green
 - Testing strategy designed and locked (2026-06-17) — 8-layer fully-automated model, no manual-exploratory layer. See `.mex/context/testing.md`.
 - Coding conventions locked (2026-06-17) — Git workflow, error hierarchy, logging, config, type hints, comments, dependency management added to `.mex/context/conventions.md`.
 - Process policies locked (2026-06-17) — DoD, CI pipeline, code review, benchmarks, release policy, security in `.mex/context/process.md`. Phase-boundary review, 0.1.0 after Phase 2, per-phase SDK docs mandatory. See `.mex/context/decisions.md`.
@@ -285,10 +291,10 @@ For every task, follow this loop:
 
 ---
 
-## v0.4.0 Planning (Phase 6: User Auth & Permissions)
+## v0.4.0 Complete (Phase 6: User Auth & Permissions)
 
 **Scope**: Phase 6 (User Authentication & Fine-grained Permissions)
-**Status**: PM Approved (2026-06-18), Implementation Deferred
+**Status**: **Shipped!** (2026-06-18)
 **Reference**: See `V040_IMPLEMENTATION_PLAN.md` for full details
 
 ### User Stories (PM Review Required)
@@ -416,4 +422,52 @@ ARGON2_TIME_COST=3
 ARGON2_MEMORY_COST=65536
 ARGON2_PARALLELISM=4
 ```
+
+---
+
+## v0.5.0 Complete (Phase 7-8: Web UI 权限管理完善)
+
+**Scope**: Phase 7-8 (Web UI 权限管理完善)
+**Status**: 已完成并发布 ✅
+**版本**: v0.5.0
+
+### 用户故事完成情况
+| ID | 用户故事 | 状态 |
+|----|---------|------|
+| US-025 | 作为用户，我想在 Web UI 的登录页面登录，这样我就能通过浏览器安全访问。 | ✅ 完成 |
+| US-026 | 作为管理员，我想在 Web UI 中管理用户（创建/编辑/删除），这样我不用写 API 调用就能管理团队。 | ✅ 完成 |
+| US-027 | 作为数据集所有者，我想在 Web UI 中管理数据集权限（分配/撤销/更新），这样我就能直观地控制访问。 | ✅ 完成 |
+| US-028 | 作为用户，我想在 Web UI 的用户设置页面修改密码和管理 API keys，这样我就能自助维护账号。 | ✅ 完成 |
+| US-029 | 作为用户，我想在 Web UI 中看到我的权限级别可视化，这样我就能清楚知道我能做什么操作。 | ✅ 完成 |
+
+### 功能实现详情
+
+#### 新增 Web UI 功能
+- **登录页面**：支持用户名/密码登录，支持首次初始化设置
+- **用户管理（管理员）**：创建、编辑、删除用户，管理用户角色和状态
+- **数据集权限管理**：所有者可分配/撤销/更新用户权限
+- **用户设置页面**：修改密码、创建/撤销 API keys
+- **权限级别可视化**：彩色标签显示权限级别（管理员/所有者/读写/只读）
+
+#### 新增 API 端点
+- `GET /auth/setup/status` - 检查是否需要初始化设置
+- `POST /auth/refresh` - 使用 refresh token 获取新的 access token
+
+#### 技术特性
+- Token 自动刷新机制
+- 响应式设计，支持中文界面
+- Modal 弹窗交互
+- 安全的密码处理
+
+### 已取消的用户故事（不会实现）
+- US-030: 审计日志 UI
+- US-031: OAuth2/SSO 集成
+- US-032: 临时/过期权限
+- US-033: 细粒度操作权限（延期）
+
+### 测试状态
+- ✅ 所有 222 个测试通过
+- ✅ Lint 检查通过
+- ✅ Mypy 类型检查通过
+- ✅ 文档构建通过
 

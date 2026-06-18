@@ -5,6 +5,7 @@ Authentication endpoints - initial setup, login, password change, API keys.
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 
 from dreamdata.api.dependencies import get_meta_conn_for_api, get_settings_for_api
 from dreamdata.auth.dependencies import (
@@ -24,11 +25,24 @@ from dreamdata.auth.models import (
     MessageResponse,
     SetupRequest,
     SetupResponse,
+    TokenRefreshResponse,
     User,
 )
 from dreamdata.auth.repository import AuthRepository, UserRow
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class SetupStatusResponse(BaseModel):
+    """Response for setup status check."""
+
+    needs_setup: bool
+
+
+class RefreshTokenRequest(BaseModel):
+    """Request to refresh access token."""
+
+    refresh_token: str
 
 
 def ensure_init() -> None:
@@ -256,3 +270,72 @@ async def revoke_api_key(
         )
 
     return MessageResponse(message="API key revoked successfully")
+
+
+@router.get("/setup/status", response_model=SetupStatusResponse)
+async def setup_status() -> SetupStatusResponse:
+    """Check if initial setup is needed."""
+    ensure_init()
+    meta_conn = get_meta_conn_for_api()
+    auth_repo = AuthRepository(meta_conn)
+
+    needs_setup = auth_repo.count_users() == 0
+    return SetupStatusResponse(needs_setup=needs_setup)
+
+
+@router.post("/refresh", response_model=TokenRefreshResponse)
+async def refresh_token(request: RefreshTokenRequest) -> TokenRefreshResponse:
+    """Refresh access token using a refresh token."""
+    ensure_init()
+    token_helper = get_token_helper()
+
+    try:
+        payload = token_helper.verify_token(request.refresh_token)
+        if payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+            )
+        token_type = payload.get("type")
+        if token_type != "refresh":  # noqa: S105
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+            )
+
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+            )
+
+        # Verify user still exists and is active
+        meta_conn = get_meta_conn_for_api()
+        auth_repo = AuthRepository(meta_conn)
+        user = auth_repo.get_user_by_id(int(user_id))
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found or disabled",
+            )
+
+        # Create new access token
+        access_token = token_helper.create_access_token(
+            user_id=user.id,
+            username=user.username,
+            role=user.role,
+        )
+
+        return TokenRefreshResponse(
+            access_token=access_token,
+            token_type="bearer",  # noqa: S106
+            expires_in=token_helper.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
